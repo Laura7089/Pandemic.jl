@@ -5,32 +5,36 @@ using Graphs
 
 A city in the game world.
 """
-mutable struct City
+struct City
     id::Any
     colour::Disease
-    researchstation::Bool
-    diseasecubes::Int
 end
-"""
-    City(id, colour)
-
-Create a new city with the given params, without a station or any disease cubes.
-"""
-City(id, colour) = City(id, colour, false, 0)
 export City
 
 """
     World
 
-Information about the cities (and their status) and transit links in the world.
+The cities and transit links on the world map.
 """
-mutable struct World
+struct World
     cities::Vector{City}
     graph::SimpleGraph{Int64}
-    infectionrate_index::Int
-    outbreaks::Int
+    startpoint::Int
 end
 export World
+
+Base.length(w::World) = length(w.cities)
+
+"""
+    World(city)
+
+Construct a [`World`](@ref) with one [`City`](@ref).
+"""
+function World(city)
+    graph = SimpleGraph()
+    add_vertex!(graph)
+    return World([city], graph, 1)
+end
 
 """
     cityindex(world, id)
@@ -49,15 +53,6 @@ function cityindex(world::World, city::City)
     findfirst(c -> c.id == city.id, world.cities)
 end
 export cityindex
-
-"""
-    World()
-
-Construct an Empty [`World`](@ref).
-"""
-function World()
-    return World([], SimpleGraph())
-end
 
 """
     addcity!(world, city[, links_to])
