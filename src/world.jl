@@ -16,10 +16,10 @@ export City
 
 The cities and transit links on the world map.
 """
-struct World
+mutable struct World
     cities::Vector{City}
     graph::SimpleGraph{Int64}
-    startpoint::Int
+    start::Int
 end
 export World
 
@@ -37,18 +37,25 @@ function World(city)
 end
 
 """
+    startcity!(world, city)
+
+Set the starting location of `world` to be `city`.
+"""
+function startcity!(world, i::Int)
+    world.start = i
+end
+function startcity!(world, c)
+    world.start = cityindex(world, c)
+end
+
+"""
     cityindex(world, id)
 
-Get the index of a [`City`](@ref) into `world.cities` and `world.graph` by it's `id`.
+Get the index of a [`City`](@ref) into `world.cities` and `world.graph`.
 """
 function cityindex(world::World, id)
     findfirst(c -> c.id == id, world.cities)
 end
-"""
-    cityindex(world, city)
-
-Get the index of a [`City`](@ref) into `world.cities` and `world.graph`.
-"""
 function cityindex(world::World, city::City)
     findfirst(c -> c.id == city.id, world.cities)
 end

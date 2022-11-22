@@ -4,6 +4,7 @@ include("./parameters.jl")
 include("./world.jl")
 
 using Random
+using Parameters
 
 """
     popmany!(c, n)
@@ -13,72 +14,44 @@ using Random
 If `c` is too small, this function will `pop!` as many elements as it can.
 """
 # Thanks to https://stackoverflow.com/questions/68997862/pop-multiple-items-from-julia-vector
-popmany!(c, n) = (pop!(c) for _ in 1:min(n, length(c)))
+popmany!(c, n) = (pop!(c) for _ = 1:min(n, length(c)))
 
-mutable struct Game{R<:AbstractRNG}
-    rng::R
+@with_kw mutable struct Game{R<:AbstractRNG}
     world::World
     difficulty::Difficulty
     numplayers::Int
 
+    rng::R = MersenneTwister()
+
     # Map objects
-    cubes::Vector{Int}
-    stations::Vector{Bool}
-    playerlocs::Vector{Int}
+    cubes::Vector{Int} = zeros(Int, length(world))
+    stations::Vector{Bool} = [i == world.start for i = 1:length(world)]
+    playerlocs::Vector{Int} = [world.start for _ = 1:numplayers]
 
     # Cards
-    hands::Vector{Vector{Int}}
-    infectiondeck::Vector{Int}
-    infectiondiscard::Vector{Int}
+    hands::Vector{Vector{Int}} = Int[]
+    infectiondeck::Vector{Int} = collect(1:length(world))
+    infectiondiscard::Vector{Int} = Int[]
     # NOTE: a 0 denotes an epidemic card
-    drawpile::Vector{Int}
+    drawpile::Vector{Int} = Int[]
 
     # Global state
-    infectionrate_index::Int
-    outbreaks::Int
-    cures::Dict{Disease,Bool}
-end
-
-"""
-    Game(world, difficulty, numplayers[, rng])
-
-Create a new game, **not setup**.
-"""
-function Game(world, difficulty, numplayers, rng = MersenneTwister())
-    n = length(world.cities)
-    stations = [false for _ in 1:n]
-    stations[world.startpoint] = true
-    Game(
-        rng,
-        world,
-        difficulty,
-        numplayers,
-        zeros(Int, n),
-        stations,
-        vec(repeat([world.startpoint], numplayers)),
-        Vector{Vector{Int}}(undef, (0,)),
-        collect(1:n),
-        Vector{Int}(undef, (0,)),
-        Vector{Int}(undef, (0,)),
-        1,
-        0,
-        Dict{Disease, Bool}(),
-    )
+    infectionrate_index::Int = 1
+    outbreaks::Int = 0
+    cured::Dict{Disease,Bool} = Dict()
 end
 
 function setupgame!(game)
-    numepidemics = Int(game.difficulty)
-    shuffle!(game.infectiondeck)
-    numcities = length(game.world)
-
-    # deal hands
-    playercards = collect(1:numcities)
+    @debug("Dealing hands")
+    playercards = collect(1:length(game.world))
+    shuffle!(game.rng, playercards)
     handsize = 6 - game.numplayers
-    for i in 1:game.numplayers
+    for i = 1:game.numplayers
         push!(game.hands, collect(popmany!(playercards, handsize)))
     end
 
-    # place start cubes
+    @debug("Placing disease cubes")
+    shuffle!(game.rng, game.infectiondeck)
     for level in reverse(1:3)
         for city in popmany!(game.infectiondeck, 3)
             game.cubes[city] += level
@@ -87,25 +60,26 @@ function setupgame!(game)
     end
     validatecubes(game)
 
-    # prepare draw pile
+    @debug("Preparing draw pile")
     numpiles = Int(game.difficulty)
-    subpilesize = Int(length(playercards) // numpiles)
-    for _ in 1:numpiles
+    subpilesize = Int(round(length(playercards) / numpiles, RoundUp))
+    for _ = 1:numpiles
         pile = collect(popmany!(playercards, subpilesize))
         push!(pile, 0)
-        shuffle!(pile)
+        # TODO: faster to insert at a given point instead?
+        shuffle!(game.rng, pile)
         game.drawpile = vcat(game.drawpile, pile)
     end
     @assert(length(playercards) == 0)
 end
 
 """
-    setupgame(world, difficulty, numplayers[, rng])
+    newgame(world, difficulty, numplayers[, rng])
 
-Create a new game and set it up.
+Create a new game and set it up for the first turn.
 """
-function setupgame(world, difficulty, numplayers, rng = MersenneTwister())
-    game = Game(world, difficulty, numplayers, rng)
+function newgame(world, difficulty, numplayers, rng = MersenneTwister())
+    game = Game(world = world, difficulty = difficulty, numplayers = numplayers, rng = rng)
     setupgame!(game)
     return game
 end
@@ -114,7 +88,7 @@ export setupgame
 """
     validatecubes(game)
 
-Assert that the cube totals are valid in `game`.
+Assert that the cube totals in `game` are valid.
 
 Throw an error if not.
 """
