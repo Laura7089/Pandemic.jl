@@ -126,7 +126,7 @@ Throw an error if not.
 """
 function validatecubes(game::Game)
     for disease in instances(Disease)
-        @assert sum(game.cubes[:, Int(disease)]) <= CUBES_PER_DISEASE
+        @assert cubesinplay(game, disease) <= CUBES_PER_DISEASE
     end
 end
 
@@ -137,6 +137,15 @@ Count the number of stations in play.
 """
 function stationcount(game::Game)::Int
     length(filter(x -> x, game.stations))
+end
+
+"""
+    cubesinplay(game, colour)
+
+Count the number of cubes of `colour` in play.
+"""
+function cubesinplay(game::Game, d::Disease)::Int
+    sum(game.cubes[:, Int(disease)])
 end
 
 include("./Actions.jl")
