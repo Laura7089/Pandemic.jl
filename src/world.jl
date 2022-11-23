@@ -49,17 +49,35 @@ function startcity!(world, c)
 end
 
 """
-    cityindex(world, id)
+    cityindexunchecked(world, id)
 
 Get the index of a [`City`](@ref) into `world.cities` and `world.graph`.
+
+Returns `nothing` if the city isn't found.
 """
-function cityindex(world::World, id)
+function cityindexunchecked(world::World, id)
     findfirst(c -> c.id == id, world.cities)
 end
-function cityindex(world::World, city::City)
+function cityindexunchecked(world::World, city::City)
     findfirst(c -> c.id == city.id, world.cities)
 end
 export cityindex
+
+"""
+    cityindex(world, city[, error])
+
+Get the index of a [`City`](@ref) into `world.cities` and `world.graph`.
+
+Throws an error if the city isn't found.
+Pass the parameter `error` to override the error text.
+"""
+function cityindex(world::World, c, e = "City $(c) not found")
+    i = cityindexunchecked(world, c)
+    if i == nothing
+        throw(error(e))
+    end
+    return i
+end
 
 """
     addcity!(world, city[, links_to])
@@ -74,9 +92,10 @@ Throws an error if:
 - any item in `links_to` isn't in the world
 - failure to add the city to the graph occurs
 """
+# TODO: check if ID is already in use?
 function addcity!(world::World, city::City, links_to = [])
     # Check if city already exists
-    if cityindex(world, city) != nothing
+    if cityindexunchecked(world, city) != nothing
         throw(error("City '$(city.id)' already placed in the world"))
     end
 
@@ -87,16 +106,13 @@ function addcity!(world::World, city::City, links_to = [])
     my_id = length(world.cities)
 
     for link in links_to
-        other_id = cityindex(world, link)
-        if other_id == nothing
-            throw(error("Can't link to '$(link.id)' which doesn't exist"))
-        end
+        other_id = cityindex(world, link, "Can't link to '$(link.id)' which doesn't exist")
 
         if my_id == other_id
             @warn("City '$(city.id)' tried to link to itself")
             continue
         end
-        add_edge!(world.graph, my_id, cityindex(world, link))
+        add_edge!(world.graph, my_id, other_id)
     end
 
     return my_id

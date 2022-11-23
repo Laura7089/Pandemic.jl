@@ -16,6 +16,33 @@ If `c` is too small, this function will `pop!` as many elements as it can.
 # Thanks to https://stackoverflow.com/questions/68997862/pop-multiple-items-from-julia-vector
 popmany!(c, n) = (pop!(c) for _ = 1:min(n, length(c)))
 
+@enum PlayerAction begin
+    Move
+    BuildStation
+    TreatDisease
+    ShareKnowledge
+    DiscoverCure
+end
+
+@enum PlayerMove begin
+    DriveSail
+    DirectFlight
+    CharterFlight
+    ShuttleFlight
+end
+
+@enum DiseaseState begin
+    Spreading
+    Cured
+    Eradicated
+end
+
+@enum GameState begin
+    Won
+    Lost
+    Playing
+end
+
 @with_kw mutable struct Game{R<:AbstractRNG}
     world::World
     difficulty::Difficulty
@@ -24,11 +51,12 @@ popmany!(c, n) = (pop!(c) for _ = 1:min(n, length(c)))
     rng::R = MersenneTwister()
 
     # Map objects
-    cubes::Vector{Int} = zeros(Int, length(world))
+    cubes::Matrix{Int} = zeros(Int, (length(world), length(instances(Disease))))
     stations::Vector{Bool} = [i == world.start for i = 1:length(world)]
     playerlocs::Vector{Int} = [world.start for _ = 1:numplayers]
 
     # Cards
+    # TODO: event cards?
     hands::Vector{Vector{Int}} = Int[]
     infectiondeck::Vector{Int} = collect(1:length(world))
     infectiondiscard::Vector{Int} = Int[]
@@ -36,9 +64,13 @@ popmany!(c, n) = (pop!(c) for _ = 1:min(n, length(c)))
     drawpile::Vector{Int} = Int[]
 
     # Global state
+    diseases::Vector{DiseaseState} = [Spreading for _ = 1:length(instances(Disease))]
     infectionrate_index::Int = 1
     outbreaks::Int = 0
-    cured::Dict{Disease,Bool} = Dict()
+
+    playerturn::Int = 1
+    round::Int = 1
+    state::GameState = Playing
 end
 
 function setupgame!(game)
@@ -54,7 +86,7 @@ function setupgame!(game)
     shuffle!(game.rng, game.infectiondeck)
     for level in reverse(1:3)
         for city in popmany!(game.infectiondeck, 3)
-            game.cubes[city] += level
+            game.cubes[city, Int(game.world.cities[city].colour)] += level
             push!(game.infectiondiscard, city)
         end
     end
@@ -83,7 +115,7 @@ function newgame(world, difficulty, numplayers, rng = MersenneTwister())
     setupgame!(game)
     return game
 end
-export setupgame
+export newgame
 
 """
     validatecubes(game)
@@ -92,11 +124,21 @@ Assert that the cube totals in `game` are valid.
 
 Throw an error if not.
 """
-function validatecubes(game)
+function validatecubes(game::Game)
     for disease in instances(Disease)
-        indices = findall(c -> c.colour == disease, game.world.cities)
-        @assert(sum(getindex.(Ref(game.cubes), indices)) <= CUBES_PER_DISEASE)
+        @assert sum(game.cubes[:, Int(disease)]) <= CUBES_PER_DISEASE
     end
 end
+
+"""
+    stationcount(game)
+
+Count the number of stations in play.
+"""
+function stationcount(game::Game)::Int
+    length(filter(x -> x, game.stations))
+end
+
+include("./actions.jl")
 
 end
