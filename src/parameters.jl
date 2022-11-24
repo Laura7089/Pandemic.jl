@@ -30,12 +30,19 @@ const global STARTING_CARDS = Dict(4 => 2, 3 => 3, 2 => 4)
 const global CUBES_PER_DISEASE = 24
 const global MAX_STATIONS = 6
 const global INFECTION_RATES = [2, 2, 2, 3, 3, 4, 4]
-const global OUTBREAK_THRESHOLD = 3
+const global INITIAL_INFECTIONS = [(3, 3), (2, 2), (1, 1)]
 const global CARDS_TO_CURE = 5
+const global MAX_HAND = 7
+"""
+    PLAYER_DRAW
+
+The number of player cards each player draws at the end of their turn.
+"""
+const global PLAYER_DRAW = 2
 """
     MAX_CUBES_PER_CITY
 
-The maximum number of cubes a city can hold and thus also the epidemic threshold.
+The maximum number of cubes a city can hold and thus also the outbreak threshold.
 """
 const global MAX_CUBES_PER_CITY = 3
 

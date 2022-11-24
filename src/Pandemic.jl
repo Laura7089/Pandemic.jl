@@ -1,19 +1,21 @@
 module Pandemic
 
+# TODO: write tests
+
 include("./parameters.jl")
 include("./world.jl")
 
 using Random
 using Parameters
 
+# Thanks to https://stackoverflow.com/questions/68997862/pop-multiple-items-from-julia-vector
 """
     popmany!(c, n)
 
-`pop!`s `n` elements from collection `c`.
+[`pop!`](@ref)s `n` elements from collection `c`.
 
-If `c` is too small, this function will `pop!` as many elements as it can.
+If `c` is too small, this function will [`pop!`](@ref) as many elements as it can.
 """
-# Thanks to https://stackoverflow.com/questions/68997862/pop-multiple-items-from-julia-vector
 popmany!(c, n) = (pop!(c) for _ = 1:min(n, length(c)))
 
 @enum PlayerAction begin
@@ -57,7 +59,7 @@ end
 
     # Cards
     # TODO: event cards?
-    hands::Vector{Vector{Int}} = Int[]
+    hands::Vector{Vector{Int}} = [[] for _ = 1:numplayers]
     infectiondeck::Vector{Int} = collect(1:length(world))
     infectiondiscard::Vector{Int} = Int[]
     # NOTE: a 0 denotes an epidemic card
@@ -73,24 +75,31 @@ end
     state::GameState = Playing
 end
 
-function setupgame!(game)
+"""
+    setupgame!(game)
+
+(Re-)Run setup on an existing [`Game`](@ref).
+
+If the game is already in an end state once this has finished, this function will emit a warning then set the state of the game back to `Playing` for setup convenience.
+"""
+function setupgame!(game::Game)::Game
     @debug("Dealing hands")
     playercards = collect(1:length(game.world))
     shuffle!(game.rng, playercards)
     handsize = 6 - game.numplayers
-    for i = 1:game.numplayers
-        push!(game.hands, collect(popmany!(playercards, handsize)))
+    for _ = 1:handsize, p = 1:game.numplayers
+        push!(game.hands[p], pop!(playercards))
     end
 
     @debug("Placing disease cubes")
     shuffle!(game.rng, game.infectiondeck)
-    for level in reverse(1:3)
-        for c in popmany!(game.infectiondeck, 3)
-            game.cubes[c, Int(game.world.cities[c].colour)] += level
-            push!(game.infectiondiscard, city)
+    for (numcards, numcubes) in INITIAL_INFECTIONS
+        for c in popmany!(game.infectiondeck, numcards)
+            game.cubes[c, Int(game.world.cities[c].colour)] += numcubes
+            push!(game.infectiondiscard, c)
         end
     end
-    validatecubes(game)
+    @assert cubeslegal(game) "Too many cubes dealt out in setup"
 
     @debug("Preparing draw pile")
     numpiles = Int(game.difficulty)
@@ -102,15 +111,24 @@ function setupgame!(game)
         shuffle!(game.rng, pile)
         game.drawpile = vcat(game.drawpile, pile)
     end
-    @assert(length(playercards) == 0)
+    @assert(length(playercards) == 0) # Make sure we used up all the player cards
+
+    state = gamestate(game)
+    if state != Playing
+        @warn "Game is already $(state), setting back to Playing"
+        game.state = Playing
+    end
+    return game
 end
 
 """
     newgame(world, difficulty, numplayers[, rng])
 
-Create a new game and set it up for the first turn.
+Create a new [`Game`](@ref) and set it up for the first turn.
+
+Effectively constructs a [`Game`](@ref) then calls [`setupgame!`](@ref) on it.
 """
-function newgame(world, difficulty, numplayers, rng = MersenneTwister())
+function newgame(world, difficulty, numplayers, rng = MersenneTwister())::Game
     game = Game(world = world, difficulty = difficulty, numplayers = numplayers, rng = rng)
     setupgame!(game)
     return game
@@ -118,52 +136,165 @@ end
 export newgame
 
 """
-TODO
+    drawcards!(game[, predicate])
+
+Perform the player deck draw, usually at the end of a turn.
+
+`predicate` should be a callback function which takes the `game` object and returns a (priority-ordered) collection/iterator of cards to discard.
+The returned collection must be at least as long as the number of cards that have to be discarded.
+If the player's hand doesn't exceed `MAX_HAND`, `predicate` will not be called.
+
+If `drawcards!` is called without `predicate`, the last cards in the hand will be discarded, ie. most recently-drawn cards are prioritised for discard.
 """
-function postturn!(game::Game)
-    # Draw cards
-    drawnplayercards = popmany!(game.drawpile, 2)
+function drawcards!(game::Game, predicate)
+    @debug "Drawing cards"
+    drawn = popmany!(game.drawpile, PLAYER_DRAW)
+
+    # Resolve epidemics
     # TODO: special action if 2 epidemics drawn?
-    for _ in filter(x -> x == 0, drawnplayercards)
-        c = popat!(game.infectiondeck, 1)
-        if game.cubes[c] != 0
-            # TODO: trigger epidemic
+    for _ in filter(x -> x == 0, drawn)
+        c = popat!(game.infectiondeck, 1) # "bottom" card
+        city = game.world.cities[c]
+        @info "Epidemic in $(city)"
+        if game.cubes[c, city.colour] != 0
+            outbreak!(game, c, [c])
         end
         game.cubes[c] = MAX_CUBES_PER_CITY
+        push!(game.infectiondiscard, 0) # back into the infection deck
     end
 
     # Add cards to hand
-    for c in filter(x -> x != 0, drawnplayercards)
+    for c in filter(x -> x != 0, drawn)
         push!(game.hands[game.playerturn], c)
     end
-    # TODO: what cards to discard?
-    discarded = splice!(game.hands[game.playerturn], 5:)
-    game.discardpile = vcat(game.discardpile, discarded)
 
-    # Infection cards
-    drawninfections = popmany!(game.infectiondeck, INFECTION_RATES[game.infectionrateindex])
-    for c in drawninfections
-        colour = game.world.cities[c].colour
-        if game.cubes[c, Int(colour)] == MAX_CUBES_PER_CITY
-            # TODO: cause an epidemic
-            # worth creating an `infectcity!` function instead?
-        else
-            game.cubes[c, Int(colour)] += 1
+    handsize = length(game.hands[game.playerturn])
+    if handsize > MAX_HAND
+        numtodiscard = MAX_HAND - handsize
+        @info "Player hand too big, discarding cards with predicate" game.game.playerturn handsize MAX_HAND numtodiscard
+
+        discard = Iterators.take(predicate(game), numtodiscard)
+        if length(discard) < numtodiscard
+            throw(error("Predicate didn't return enough cards to discard"))
         end
+        for c in discard
+            i = findfirst(x -> x == c, game.hands[game.playerturn])
+            deleteat!(game.hands[game.playerturn], 1)
+            push!(game.discardpile, c)
+        end
+    end
+end
+function drawcards!(game::Game)
+    drawcards!(game, g -> g.hands[g.playerturn][MAX_HAND+1:end])
+end
+
+"""
+    infectcities!(game)
+
+Draw the appropriate amount of infection cards and call [`infectcity!`](@ref) with them.
+"""
+function infectcities!(game::Game)
+    drawninfections = popmany!(game.infectiondeck, INFECTION_RATES[game.infectionrateindex])
+    infectcity!.(Ref(game), drawinfections)
+end
+
+"""
+    infectcity!(game, city[, colour][, outbreakignore])
+
+Infect `city` with one cube of `colour`.
+
+If `colour == nothing` then the default colour of `city` will be used.
+Trigger an outbreak iff `city` has [`MAX_CUBES_PER_CITY`](@ref) cubes before infection.
+Pass `outbreakignore = [..]` to whitelist given cities from outbreaks resulting from this infection.
+"""
+function infectcity!(g::Game, city, colour = nothing, outbreakignore::Vector{Int} = [])
+    c, city = getcity(g.world, city)
+    colour = colour == nothing ? city.colour : colour
+    @debug "Infecting $(city) with $(colour)"
+    if g.cubes[c, Int(colour)] == MAX_CUBES_PER_CITY
+        outbreak!(g, c, vcat(outbreakignore, [c]))
+    else
+        g.cubes[c, Int(colour)] += 1
     end
 end
 
 """
-    validatecubes(game)
+    outbreak!(game, city, ignore)
 
-Assert that the cube totals in `game` are valid.
+Trigger an outbreak around `city`.
 
-Throw an error if not.
+Ignore any cities in `ignore` in chain outbreaks.
 """
-function validatecubes(game::Game)
-    for disease in instances(Disease)
-        @assert cubesinplay(game, disease) <= CUBES_PER_DISEASE
+function outbreak!(g::Game, city, ignore::Vector{Int})
+    g.outbreaks += 1
+    c, city = getcity(g.world, city)
+    @info "Outbreak in $(city)!"
+    colour = city.colour
+    for neighbour in Graphs.neighbors(g.world.graph, c)
+        if neighbour in ignore
+            @debug "Ignoring $(neighbour) in outbreak chain from $(city)"
+            continue
+        end
+        infectcity!(g, neighbour, colour, ignore)
     end
+end
+
+"""
+    checkstate(game)
+
+Check if `game` is won, lost or still in progress.
+
+Updates `game.state` if it has changed.
+"""
+function checkstate!(g::Game)::GameState
+    # Game is already over
+    if g.state != Playing
+        return g.state
+    end
+
+    # All cures have been found
+    if all(values(g.cures))
+        g.state = Won
+        return Won
+    end
+
+    # Cube state is not legal
+    if !cubeslegal(g)
+        g.state = Lost
+        return Lost
+    end
+
+    # Draw deck is empty
+    # TODO: is this the right way to do this condition?
+    # should it be called on it's own?
+    if length(g.drawpile) < PLAYER_DRAW
+        g.state = Lost
+        return Lost
+    end
+
+    # Outbreaks count is at or past limit
+    if game.outbreaks >= MAX_OUTBREAKS
+        g.state = Lost
+        return Lost
+    end
+
+    return Playing
+end
+
+"""
+    cubeslegal(game)
+
+Test that the cube totals in `game` are valid, returns `true` or `false`.
+"""
+function cubeslegal(game::Game)::Bool
+    legal = true
+    for d in instances(Disease)
+        if cubesinplay(game, d) <= CUBES_PER_DISEASE
+            @info "All $(d) cubes are in play, cube state is not legal"
+            legal = false
+        end
+    end
+    legal
 end
 
 """
@@ -172,7 +303,7 @@ end
 Count the number of stations in play.
 """
 function stationcount(game::Game)::Int
-    length(filter(x -> x, game.stations))
+    filter(identity, game.stations) |> length
 end
 
 """
@@ -181,7 +312,7 @@ end
 Count the number of cubes of `colour` in play.
 """
 function cubesinplay(game::Game, d::Disease)::Int
-    sum(game.cubes[:, Int(disease)])
+    game.cubes[:, Int(d)] |> sum
 end
 
 include("./Actions.jl")

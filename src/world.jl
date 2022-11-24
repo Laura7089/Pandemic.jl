@@ -1,9 +1,11 @@
 using Graphs
 
 """
-    City
+    City{I}
 
 A city in the game world.
+
+`id` cannot be of type `Int`.
 """
 struct City
     id::Any
@@ -30,7 +32,7 @@ Base.length(w::World) = length(w.cities)
 
 Construct a [`World`](@ref) with one [`City`](@ref).
 """
-function World(city)
+function World(city::City)
     graph = SimpleGraph()
     add_vertex!(graph)
     return World([city], graph, 1)
@@ -61,7 +63,6 @@ end
 function cityindexunchecked(world::World, city::City)
     findfirst(c -> c.id == city.id, world.cities)
 end
-export cityindex
 
 """
     cityindex(world, city[, error])
@@ -73,11 +74,28 @@ Pass the parameter `error` to override the error text.
 """
 function cityindex(world::World, c, e = "City $(c) not found")
     i = cityindexunchecked(world, c)
-    if i == nothing
-        throw(error(e))
-    end
+    @assert i != nothing e
     return i
 end
+# Convenience method:
+# integers are not valid ids so we assume c is the index and return it
+cityindex(w::World, c::Int, e = "") = c
+export cityindex
+
+"""
+    getcity(world, city)
+    getcity(world, id)
+
+Gets a tuple of `(index, city)` from a `city` or `id` object.
+
+Uses [`cityindex`](@ref) under the hood.
+"""
+function getcity(world::World, city)::Tuple{Int,City}
+    c = cityindex(world, city)
+    city = world.cities[c]
+    return (c, city)
+end
+export getcity
 
 """
     addcity!(world, city[, links_to])
