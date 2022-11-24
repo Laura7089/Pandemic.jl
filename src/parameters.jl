@@ -24,8 +24,9 @@ Int values describe how many epidemic cards they add.
     Normal = 5
     Heroic = 6
 end
+export Introductory, Normal, Heroic
 
-const global STARTING_CARDS = Dict(4 => 2, 3 => 3, 2 => 4)
+const global STARTING_CARDS_OFFSET = 6
 
 const global CUBES_PER_DISEASE = 24
 const global MAX_STATIONS = 6

@@ -19,32 +19,52 @@ If `c` is too small, this function will [`pop!`](@ref) as many elements as it ca
 popmany!(c, n) = (pop!(c) for _ = 1:min(n, length(c)))
 
 @enum PlayerAction begin
-    Move
+    # Movement
+    DriveSail
+    DirectFlight
+    CharterFlight
+    ShuttleFlight
+    # Other actions
     BuildStation
     TreatDisease
     ShareKnowledge
     DiscoverCure
 end
 
-@enum PlayerMove begin
-    DriveSail
-    DirectFlight
-    CharterFlight
-    ShuttleFlight
-end
+"""
+    DiseaseState
 
+The status of a particular disease in the game.
+
+Can be `Spreading`, `Cured` or `Eradicated`.
+"""
 @enum DiseaseState begin
     Spreading
     Cured
     Eradicated
 end
 
+"""
+    GameState
+
+The win/loss status of a game.
+
+Can be `Playing`, `Won` or `Lost`.
+"""
 @enum GameState begin
     Won
     Lost
     Playing
 end
+export GameState
 
+"""
+    Game{R<:AbstractRNG}
+
+A complete state of an in-progress or finished game session.
+
+Holds the hands, decks, cubes, research stations, settings, counters and RNG for a session.
+"""
 @with_kw mutable struct Game{R<:AbstractRNG}
     world::World
     difficulty::Difficulty
@@ -74,6 +94,7 @@ end
     round::Int = 1
     state::GameState = Playing
 end
+export Game
 
 """
     setupgame!(game)
@@ -86,16 +107,17 @@ function setupgame!(game::Game)::Game
     @debug("Dealing hands")
     playercards = collect(1:length(game.world))
     shuffle!(game.rng, playercards)
-    handsize = 6 - game.numplayers
-    for _ = 1:handsize, p = 1:game.numplayers
-        push!(game.hands[p], pop!(playercards))
+    handsize = STARTING_HAND_OFFSET - game.numplayers
+    for p = 1:game.numplayers
+        game.hands[p] = collect(popmany!(playercards, handsize))
     end
 
     @debug("Placing disease cubes")
     shuffle!(game.rng, game.infectiondeck)
     for (numcards, numcubes) in INITIAL_INFECTIONS
         for c in popmany!(game.infectiondeck, numcards)
-            game.cubes[c, Int(game.world.cities[c].colour)] += numcubes
+            _, city = getcity(game.world, c)
+            game.cubes[c, Int(city.colour)] += numcubes
             push!(game.infectiondiscard, c)
         end
     end
@@ -113,10 +135,14 @@ function setupgame!(game::Game)::Game
     end
     @assert(length(playercards) == 0) # Make sure we used up all the player cards
 
-    state = gamestate(game)
+    state = checkstate!(game)
     if state != Playing
         @warn "Game is already $(state), setting back to Playing"
         game.state = Playing
+    end
+
+    if isempty(game.infectiondeck)
+        @error "The infection draw pile is empty after game setup"
     end
     return game
 end
@@ -148,7 +174,7 @@ If `drawcards!` is called without `predicate`, the last cards in the hand will b
 """
 function drawcards!(game::Game, predicate)
     @debug "Drawing cards"
-    drawn = popmany!(game.drawpile, PLAYER_DRAW)
+    drawn = collect(popmany!(game.drawpile, PLAYER_DRAW))
 
     # Resolve epidemics
     # TODO: special action if 2 epidemics drawn?
@@ -174,9 +200,7 @@ function drawcards!(game::Game, predicate)
         @info "Player hand too big, discarding cards with predicate" game.game.playerturn handsize MAX_HAND numtodiscard
 
         discard = Iterators.take(predicate(game), numtodiscard)
-        if length(discard) < numtodiscard
-            throw(error("Predicate didn't return enough cards to discard"))
-        end
+        @assert length(discard) < numtodiscard "Predicate didn't return enough cards to discard"
         for c in discard
             i = findfirst(x -> x == c, game.hands[game.playerturn])
             deleteat!(game.hands[game.playerturn], 1)
@@ -253,7 +277,7 @@ function checkstate!(g::Game)::GameState
     end
 
     # All cures have been found
-    if all(values(g.cures))
+    if all(x -> x in (Cured, Eradicated), values(g.diseases))
         g.state = Won
         return Won
     end
@@ -273,7 +297,7 @@ function checkstate!(g::Game)::GameState
     end
 
     # Outbreaks count is at or past limit
-    if game.outbreaks >= MAX_OUTBREAKS
+    if g.outbreaks >= MAX_OUTBREAKS
         g.state = Lost
         return Lost
     end
@@ -289,7 +313,7 @@ Test that the cube totals in `game` are valid, returns `true` or `false`.
 function cubeslegal(game::Game)::Bool
     legal = true
     for d in instances(Disease)
-        if cubesinplay(game, d) <= CUBES_PER_DISEASE
+        if cubesinplay(game, d) >= CUBES_PER_DISEASE
             @info "All $(d) cubes are in play, cube state is not legal"
             legal = false
         end
