@@ -32,6 +32,12 @@ const global MAX_STATIONS = 6
 const global INFECTION_RATES = [2, 2, 2, 3, 3, 4, 4]
 const global OUTBREAK_THRESHOLD = 3
 const global CARDS_TO_CURE = 5
+"""
+    MAX_CUBES_PER_CITY
+
+The maximum number of cubes a city can hold and thus also the epidemic threshold.
+"""
+const global MAX_CUBES_PER_CITY = 3
 
 """
 The number of outbreaks which signals game over.

@@ -65,7 +65,7 @@ end
 
     # Global state
     diseases::Vector{DiseaseState} = [Spreading for _ = 1:length(instances(Disease))]
-    infectionrate_index::Int = 1
+    infectionrateindex::Int = 1
     outbreaks::Int = 0
 
     playerturn::Int = 1
@@ -85,8 +85,8 @@ function setupgame!(game)
     @debug("Placing disease cubes")
     shuffle!(game.rng, game.infectiondeck)
     for level in reverse(1:3)
-        for city in popmany!(game.infectiondeck, 3)
-            game.cubes[city, Int(game.world.cities[city].colour)] += level
+        for c in popmany!(game.infectiondeck, 3)
+            game.cubes[c, Int(game.world.cities[c].colour)] += level
             push!(game.infectiondiscard, city)
         end
     end
@@ -116,6 +116,42 @@ function newgame(world, difficulty, numplayers, rng = MersenneTwister())
     return game
 end
 export newgame
+
+"""
+TODO
+"""
+function postturn!(game::Game)
+    # Draw cards
+    drawnplayercards = popmany!(game.drawpile, 2)
+    # TODO: special action if 2 epidemics drawn?
+    for _ in filter(x -> x == 0, drawnplayercards)
+        c = popat!(game.infectiondeck, 1)
+        if game.cubes[c] != 0
+            # TODO: trigger epidemic
+        end
+        game.cubes[c] = MAX_CUBES_PER_CITY
+    end
+
+    # Add cards to hand
+    for c in filter(x -> x != 0, drawnplayercards)
+        push!(game.hands[game.playerturn], c)
+    end
+    # TODO: what cards to discard?
+    discarded = splice!(game.hands[game.playerturn], 5:)
+    game.discardpile = vcat(game.discardpile, discarded)
+
+    # Infection cards
+    drawninfections = popmany!(game.infectiondeck, INFECTION_RATES[game.infectionrateindex])
+    for c in drawninfections
+        colour = game.world.cities[c].colour
+        if game.cubes[c, Int(colour)] == MAX_CUBES_PER_CITY
+            # TODO: cause an epidemic
+            # worth creating an `infectcity!` function instead?
+        else
+            game.cubes[c, Int(colour)] += 1
+        end
+    end
+end
 
 """
     validatecubes(game)
