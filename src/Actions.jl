@@ -15,7 +15,8 @@ module Actions
 # TODO: @debug and other logging
 
 using Match
-using Pandemic: stationcount, MAX_STATIONS, Game, Disease, CARDS_TO_CURE
+using Pandemic: stationcount, MAX_STATIONS, Game, Disease, CARDS_TO_CURE, getcity, discard!, cityindex
+using Graphs
 
 """
     move_one!(game, player, city)
@@ -27,10 +28,11 @@ Throws an error if `player` is not in an adjacent city.
 function move_one!(g::Game, p, dest)
     source = g.playerlocs[p]
     dest, destc = getcity(g.world, dest)
-    @assert dest in neighbors(g.graph, source) "Player $(p) is not in a city adjacent to '$(destc)'"
+    @assert dest in neighbors(g.world.graph, source) "Player $(p) is not in a city adjacent to '$(destc)'"
 
     g.playerlocs[p] = dest
 end
+export move_one!
 
 """
     move_direct!(game, player, city)
@@ -51,6 +53,7 @@ function move_direct!(g::Game, p, dest)
     discard!(g, p, handloc)
     g.playerlocs[p] = dest
 end
+export move_direct!
 
 """
     move_chartered!(game, player, city)
@@ -70,6 +73,7 @@ function move_chartered!(g::Game, p, dest)
     discard!(g, p, handloc)
     g.playerlocs[p] = dest
 end
+export move_chartered!
 
 """
     move_station!(game, player, dest)
@@ -87,6 +91,7 @@ function move_station!(g::Game, p, dest)
 
     g.playerlocs[p] = dest
 end
+export move_station!
 
 """
     buildstation!(game, player, city[, move_from])
@@ -118,6 +123,7 @@ function buildstation!(g::Game, p, city, move_from = nothing)
     discard!(g, p, handi)
     g.stations[city] = true
 end
+export buildstation!
 
 """
     treatdisease!(game, player, city, colour)
@@ -141,6 +147,7 @@ function treatdisease!(g::Game, p, city, colour::Disease)
         Eradicated => throw(error("unreachable"))
     end
 end
+export treatdisease!
 
 """
     shareknowledge!(game, player1, player2, city)
@@ -151,12 +158,13 @@ Throws if either player isn't in `city`.
 """
 function shareknowledge!(g::Game, p1, p2, city)
     c, city = getcity(g.world, city)
-    @assert g.playerlocs[p1] == g.playerlocs[p2] == c "Players $(p1) and $(p2) are not in '$(city)'"
+    @assert g.playerlocs[p1] == c && g.playerlocs[p2] == c "Players $(p1) and $(p2) are not in '$(city)'"
 
     handi = findfirst(x -> x == card, g.hands[p1])
     @assert handi != nothing "$(p1) does not have $(card) in their hand"
     push!(g.hands[p2], popat!(g.hands[p1], handi))
 end
+export shareknowledge!
 
 """
     findcure!(game, player, colour[, cards])
@@ -181,6 +189,7 @@ function findcure!(g::Game, p, d::Disease, cards)
     @assert cards ⊆ g.hands[p] "Player does not have the requested cards"
     _findcure!(g, p, d, cards)
 end
+export findcure!
 
 """
     _findcure!(game, player, disease, cards)
