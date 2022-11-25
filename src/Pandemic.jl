@@ -181,7 +181,6 @@ function drawcards!(game::Game, p, predicate)
     drawn = collect(popmany!(game.drawpile, PLAYER_DRAW))
 
     # Resolve epidemics
-    # TODO: special action if 2 epidemics drawn?
     for _ in filter(x -> x == 0, drawn)
         epidemic!(game)
     end
@@ -191,10 +190,11 @@ function drawcards!(game::Game, p, predicate)
         push!(game.hands[game.playerturn], c)
     end
 
+    # Handle discards
     handsize = length(game.hands[game.playerturn])
     if handsize > MAX_HAND
         numtodiscard = MAX_HAND - handsize
-        @info "Player hand too big, discarding cards with predicate" game.game.playerturn handsize MAX_HAND numtodiscard
+        @info "Hand too big, discarding cards" game.playerturn handsize MAX_HAND
 
         discard = Iterators.take(predicate(game), numtodiscard)
         @assert length(discard) < numtodiscard "Predicate didn't return enough cards to discard"
@@ -230,7 +230,7 @@ function epidemic!(game::Game, city)
     game.infectionrateindex += 1
 
     c, city = getcity(game.world, city)
-    @info "Epidemic in $(city)"
+    @info "Epidemic" city
 
     # Step 2
     if game.cubes[c, city.colour] != 0
@@ -282,7 +282,7 @@ Pass `outbreakignore = [..]` to whitelist given cities from outbreaks resulting 
 function infectcity!(g::Game, city, colour = nothing, outbreakignore::Vector{Int} = [])
     c, city = getcity(g.world, city)
     colour = colour == nothing ? city.colour : colour
-    @debug "Infecting $(city) with $(colour)"
+    @debug "Infecting city", city, disease=colour
     if g.cubes[c, Int(colour)] == MAX_CUBES_PER_CITY
         outbreak!(g, c, vcat(outbreakignore, [c]))
     else
@@ -300,11 +300,11 @@ Ignore any cities in `ignore` in chain outbreaks.
 function outbreak!(g::Game, city, ignore::Vector{Int})
     g.outbreaks += 1
     c, city = getcity(g.world, city)
-    @info "Outbreak in $(city)!"
+    @info "Outbreak" city
     colour = city.colour
     for neighbour in Graphs.neighbors(g.world.graph, c)
         if neighbour in ignore
-            @debug "Ignoring $(neighbour) in outbreak chain from $(city)"
+            @debug "Ignoring city in outbreak chain" source=city neighbour
             continue
         end
         infectcity!(g, neighbour, colour, ignore)
@@ -363,7 +363,7 @@ function cubeslegal(game::Game)::Bool
     legal = true
     for disease in instances(Disease)
         if cubesinplay(game, disease) >= CUBES_PER_DISEASE
-            @info "All $(disease) cubes are in play, cube state is not legal"
+            @info "All cubes are in play, cube state is not legal" disease
             legal = false
         end
     end

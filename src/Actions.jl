@@ -15,7 +15,8 @@ module Actions
 # TODO: @debug and other logging
 
 using Match
-using Pandemic: stationcount, MAX_STATIONS, Game, Disease, CARDS_TO_CURE, getcity, discard!, cityindex
+using Pandemic:
+    stationcount, MAX_STATIONS, Game, Disease, CARDS_TO_CURE, getcity, discard!, cityindex
 using Graphs
 
 """
