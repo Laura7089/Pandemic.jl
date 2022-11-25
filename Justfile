@@ -5,5 +5,9 @@ interactive:
 alias i := interactive
 
 format target=SRC_DIR:
-    julia -e 'using JuliaFormatter; format("{{ target }}")'
+    julia -E 'using JuliaFormatter; format("{{ target }}")'
 alias f := format
+
+notebook:
+    julia -e 'using Pluto; Pluto.run()'
+alias n := notebook
