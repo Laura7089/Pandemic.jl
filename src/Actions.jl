@@ -5,67 +5,157 @@ Logic for all the actions a player can carry out on their turn.
 
 Unless otherwise specified, the functions in this module ***do not*** check if:
 
-- The player pawn is in the correct place to carry out an action
-- The correct player's turn is currently in progress
-- The game has ended
+- the player has enough actions remaining to perform the action
+- the correct player's turn is currently in progress
+- the game has ended
 """
 module Actions
+
+# TODO: tests
+# TODO: @debug and other logging
 
 using Match
 using Pandemic: stationcount, MAX_STATIONS, Game, Disease, CARDS_TO_CURE
 
 """
-    buildstation!(game, city[, move_from])
+    move_one!(game, player, city)
 
-Build a research station in `city`.
+Perform a regular move for `player` to `city`.
 
-If there are already [`MAX_STATIONS`](@ref) in the game, the `move_from` parameter will determine which city loses a research station to build this one.
+Throws an error if `player` is not in an adjacent city.
 """
-function buildstation!(g::Game, city, move_from = nothing)
-    city = cityindex(g.world, city)
+function move_one!(g::Game, p, dest)
+    source = g.playerlocs[p]
+    dest, destc = getcity(g.world, dest)
+    @assert dest in neighbors(g.graph, source) "Player $(p) is not in a city adjacent to '$(destc)'"
+
+    g.playerlocs[p] = dest
+end
+
+"""
+    move_direct!(game, player, city)
+
+Perform a "direct flight" move for `player` to `city`.
+
+Discards the card for `city` from `player`'s hand.
+Throws an error if `player` is not holding the `city` card.
+"""
+function move_direct!(g::Game, p, dest)
+    source = g.playerlocs[p]
+    dest, destc = getcity(g.world, dest)
+
+    handloc = findfirst(x -> x == dest, g.hands[p])
+    @assert handloc != nothing "Player $(p) does not have the card for '$(destc)' in their hand"
+
+    # TODO: above assert is irrelevant? `discard` will error if they don't have it
+    discard!(g, p, handloc)
+    g.playerlocs[p] = dest
+end
+
+"""
+    move_chartered!(game, player, city)
+
+Perform a "chartered flight" move for `player` to `city`.
+
+Discards the card for `player`'s current location from their hand.
+Throws an error if `player` is not holding their current location.
+"""
+function move_chartered!(g::Game, p, dest)
+    source = g.playerlocs[p]
+    dest = cityindex(g.world, dest)
+
+    handloc = findfirst(x -> x == source, g.hands[p])
+    @assert handloc != nothing "Player $(p) does not have the '$(source)' card"
+
+    discard!(g, p, handloc)
+    g.playerlocs[p] = dest
+end
+
+"""
+    move_station!(game, player, dest)
+
+Move `player` from a city with a research station to `dest`.
+
+Throws an error if either city doesn't have a research station.
+"""
+function move_station!(g::Game, p, dest)
+    source = g.playerlocs[p]
+    dest = cityindex(g.world, dest)
+
+    @assert g.stations[source] "Source doesn't have a research station"
+    @assert g.stations[dest] "Dest doesn't have a research station"
+
+    g.playerlocs[p] = dest
+end
+
+"""
+    buildstation!(game, player, city[, move_from])
+
+Build a research station in `city` with the relevant card from `player`.
+
+If there are already [`MAX_STATIONS`](@ref) in the game, `move_from` will determine which city loses a station to build this one.
+Throws errors if:
+
+- `player` isn't in the right city
+- `player` doesn't have the relevant card
+- [`MAX_STATIONS`](@ref) are in play and `move_from` is not passed
+"""
+function buildstation!(g::Game, p, city, move_from = nothing)
+    c, city = getcity(g.world, city)
+
+    @assert g.playerlocs[p] == c "Player $(p) is not in $(city)"
+
     if stationcount(g) == MAX_STATIONS
         @assert move_from != nothing "Max stations reached ($(MAX_STATIONS)) but move_from is empty!"
 
         move_from = cityindex(g.world, move_from)
         g.stations[move_from] = false
     end
+
+    handi = findfirst(x -> x == c, g.hands[player])
+    @assert handi != nothing "Player $(p) doesn't have $(city) in their hand"
+
+    discard!(g, p, handi)
     g.stations[city] = true
 end
 
 """
-    treatdisease!(game, city, colour)
+    treatdisease!(game, player, city, colour)
 
 Treat a `colour` disease according to the game rules.
 
-Throws an error if there are no disease cubes of `colour` on `city`.
+Throws errors if:
+
+- there are no disease cubes of `colour` on `city`
+- `player` is not in `city`
 """
-function treatdisease!(g::Game, city, colour::Disease)
-    c = cityindex(g.world, city)
+function treatdisease!(g::Game, p, city, colour::Disease)
+    c, city = getcity(g.world, city)
     d = Int(colour)
-    @assert g.cubes[c, d] != 0 "City '$(g.world.cities[c].id)' has no $(colour) disease cubes"
+    @assert g.playerlocs[p] == c "Player $(p) is not in '$(city)'"
+    @assert g.cubes[c, d] != 0 "City '$(city)' has no $(colour) disease cubes"
 
     @match g.diseasestate[d] begin
         Spreading => (g.cubes[c, d] -= 1)
         Cured => (g.cubes[c, d] = 0) # TODO: check if eradicated
-        Eradicated => throw(error("The $(colour) disease is eradicated"))
+        Eradicated => throw(error("unreachable"))
     end
 end
 
 """
-    shareknowledge!(game, player1, player2)
+    shareknowledge!(game, player1, player2, city)
 
-Move a card from `player1`'s hand to `player2`'s hand.
+Move the `city` card from `player1`'s hand to `player2`'s hand.
 
-Checks if both players are in the correct city.
+Throws if either player isn't in `city`.
 """
-function shareknowledge!(g::Game, player1, player2, card)
-    if g.playerlocs[player1] != g.playerlocs[player2] != card
-        throw(error("Players $(player1) and $(player2) are not in the correct city"))
-    end
+function shareknowledge!(g::Game, p1, p2, city)
+    c, city = getcity(g.world, city)
+    @assert g.playerlocs[p1] == g.playerlocs[p2] == c "Players $(p1) and $(p2) are not in '$(city)'"
 
-    handi = findfirst(x -> x == card, g.hands[player1])
-    @assert handi != nothing "$(player1) does not have $(card) in their hand"
-    push!(g.hands[player2], popat!(g.hands[player1], handi))
+    handi = findfirst(x -> x == card, g.hands[p1])
+    @assert handi != nothing "$(p1) does not have $(card) in their hand"
+    push!(g.hands[p2], popat!(g.hands[p1], handi))
 end
 
 """
@@ -112,7 +202,7 @@ function _findcure!(g::Game, p, d::Disease, cards)
     for card in cards
         # Find and delete the card from the player's hand
         i = findfirst(c -> c == card, g.hands[p])
-        deleteat!(g.hands[p], i)
+        discard!(g, p, i)
     end
 end
 

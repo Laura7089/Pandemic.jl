@@ -1,6 +1,8 @@
 module Pandemic
 
-# TODO: write tests
+# TODO: tests
+# TODO: is @assert a poor performance method? (I hope not :( )
+# TODO: event cards?
 
 include("./parameters.jl")
 include("./world.jl")
@@ -78,12 +80,12 @@ Holds the hands, decks, cubes, research stations, settings, counters and RNG for
     playerlocs::Vector{Int} = [world.start for _ = 1:numplayers]
 
     # Cards
-    # TODO: event cards?
     hands::Vector{Vector{Int}} = [[] for _ = 1:numplayers]
     infectiondeck::Vector{Int} = collect(1:length(world))
     infectiondiscard::Vector{Int} = Int[]
     # NOTE: a 0 denotes an epidemic card
     drawpile::Vector{Int} = Int[]
+    discardpile::Vector{Int} = Int[]
 
     # Global state
     diseases::Vector{DiseaseState} = [Spreading for _ = 1:length(instances(Disease))]
@@ -162,31 +164,26 @@ end
 export newgame
 
 """
-    drawcards!(game[, predicate])
+    drawcards!(game, player[, predicate])
 
-Perform the player deck draw, usually at the end of a turn.
+Draw [`PLAYER_DRAW`](@ref) cards and put them in `player`'s hand.
 
-`predicate` should be a callback function which takes the `game` object and returns a (priority-ordered) collection/iterator of cards to discard.
-The returned collection must be at least as long as the number of cards that have to be discarded.
+Epidemics are handled if they're drawn.
+
+`predicate` is a callback function which takes `game` and returns a (priority-ordered) collection of cards to discard.
+This collection must have at least as many cards as have to be discarded.
 If the player's hand doesn't exceed `MAX_HAND`, `predicate` will not be called.
 
-If `drawcards!` is called without `predicate`, the last cards in the hand will be discarded, ie. most recently-drawn cards are prioritised for discard.
+If called without `predicate`, the last cards in the hand will be discarded, ie. most recently-drawn cards are prioritised for discard.
 """
-function drawcards!(game::Game, predicate)
+function drawcards!(game::Game, p, predicate)
     @debug "Drawing cards"
     drawn = collect(popmany!(game.drawpile, PLAYER_DRAW))
 
     # Resolve epidemics
     # TODO: special action if 2 epidemics drawn?
     for _ in filter(x -> x == 0, drawn)
-        c = popat!(game.infectiondeck, 1) # "bottom" card
-        city = game.world.cities[c]
-        @info "Epidemic in $(city)"
-        if game.cubes[c, city.colour] != 0
-            outbreak!(game, c, [c])
-        end
-        game.cubes[c] = MAX_CUBES_PER_CITY
-        push!(game.infectiondiscard, 0) # back into the infection deck
+        epidemic!(game)
     end
 
     # Add cards to hand
@@ -203,13 +200,64 @@ function drawcards!(game::Game, predicate)
         @assert length(discard) < numtodiscard "Predicate didn't return enough cards to discard"
         for c in discard
             i = findfirst(x -> x == c, game.hands[game.playerturn])
-            deleteat!(game.hands[game.playerturn], 1)
-            push!(game.discardpile, c)
+            discard!(game, game.playerturn, i)
         end
     end
 end
 function drawcards!(game::Game)
     drawcards!(game, g -> g.hands[g.playerturn][MAX_HAND+1:end])
+end
+
+"""
+    epidemic!(game[, city])
+
+Perform an epidemic outbreak at `city`.
+
+1. Increase infection rate (`game.infectionrateindex`)
+2. If there are any cards in `city`, trigger an [`outbreak!`](@ref) there
+3. Set the cubes in `city` to [`MAX_CUBES_PER_CITY`](@ref)
+4. Put `city` on the infection discard pile
+5. Shuffle the infection discard pile and put it back on the draw pile
+
+If `city` isn't passed, pop the bottom card from the infection draw pile and trigger the epidemic there.
+"""
+function epidemic!(game::Game)
+    c = popat!(game.infectiondeck, 1) # "bottom" card
+    epidemic!(game, c)
+end
+function epidemic!(game::Game, city)
+    # Step 1
+    game.infectionrateindex += 1
+
+    c, city = getcity(game.world, city)
+    @info "Epidemic in $(city)"
+
+    # Step 2
+    if game.cubes[c, city.colour] != 0
+        outbreak!(game, c, [c])
+    end
+
+    # Step 3
+    game.cubes[c] = MAX_CUBES_PER_CITY
+
+    # Step 4
+    push!(game.infectiondiscard, c)
+
+    # Step 5
+    shuffle!(game.rng, game.infectiondiscard)
+    game.infectiondeck = vcat(game.infectiondeck, game.infectiondiscard)
+    game.infectiondiscard = []
+end
+
+"""
+    discard!(game, player, i)
+
+Discards the card at position `i` in `player`'s hand.
+
+Throws [`BoundsError`](@ref) if `player` doesn't have a card at that location.
+"""
+function discard!(game::Game, p, handi)
+    push!(game.discardpile, popat!(game.hands[p], handi))
 end
 
 """
@@ -273,33 +321,34 @@ Updates `game.state` if it has changed.
 function checkstate!(g::Game)::GameState
     # Game is already over
     if g.state != Playing
+        @info "Game already ended"
         return g.state
     end
 
     # All cures have been found
     if all(x -> x in (Cured, Eradicated), values(g.diseases))
-        g.state = Won
-        return Won
+        @info "Game won"
+        return g.state = Won
     end
 
     # Cube state is not legal
     if !cubeslegal(g)
-        g.state = Lost
-        return Lost
+        @info "Game lost; cubes illegal" g.cubes
+        return g.state = Lost
     end
 
-    # Draw deck is empty
+    # Draw deck is too low
     # TODO: is this the right way to do this condition?
     # should it be called on it's own?
     if length(g.drawpile) < PLAYER_DRAW
-        g.state = Lost
-        return Lost
+        @info "Game lost; draw deck too small" g.drawpile threshold = PLAYER_DRAW
+        return g.state = Lost
     end
 
     # Outbreaks count is at or past limit
     if g.outbreaks >= MAX_OUTBREAKS
-        g.state = Lost
-        return Lost
+        @info "Game lost; too many outbreaks" g.outbreaks MAX_OUTBREAKS
+        return g.state = Lost
     end
 
     return Playing
@@ -312,9 +361,9 @@ Test that the cube totals in `game` are valid, returns `true` or `false`.
 """
 function cubeslegal(game::Game)::Bool
     legal = true
-    for d in instances(Disease)
-        if cubesinplay(game, d) >= CUBES_PER_DISEASE
-            @info "All $(d) cubes are in play, cube state is not legal"
+    for disease in instances(Disease)
+        if cubesinplay(game, disease) >= CUBES_PER_DISEASE
+            @info "All $(disease) cubes are in play, cube state is not legal"
             legal = false
         end
     end
