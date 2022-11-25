@@ -106,7 +106,7 @@ export Game
 If the game is already in an end state once this has finished, this function will emit a warning then set the state of the game back to `Playing` for setup convenience.
 """
 function setupgame!(game::Game)::Game
-    @debug("Dealing hands")
+    @debug "Dealing hands"
     playercards = collect(1:length(game.world))
     shuffle!(game.rng, playercards)
     handsize = STARTING_HAND_OFFSET - game.numplayers
@@ -114,7 +114,7 @@ function setupgame!(game::Game)::Game
         game.hands[p] = collect(popmany!(playercards, handsize))
     end
 
-    @debug("Placing disease cubes")
+    @debug "Placing disease cubes"
     shuffle!(game.rng, game.infectiondeck)
     for (numcards, numcubes) in INITIAL_INFECTIONS
         for c in popmany!(game.infectiondeck, numcards)
@@ -125,7 +125,7 @@ function setupgame!(game::Game)::Game
     end
     @assert cubeslegal(game) "Too many cubes dealt out in setup"
 
-    @debug("Preparing draw pile")
+    @debug "Preparing draw pile"
     numpiles = Int(game.difficulty)
     subpilesize = Int(round(length(playercards) / numpiles, RoundUp))
     for _ = 1:numpiles
@@ -282,7 +282,7 @@ Pass `outbreakignore = [..]` to whitelist given cities from outbreaks resulting 
 function infectcity!(g::Game, city, colour = nothing, outbreakignore::Vector{Int} = [])
     c, city = getcity(g.world, city)
     colour = colour == nothing ? city.colour : colour
-    @debug "Infecting city", city, disease=colour
+    @debug "Infecting city" city disease=colour
     if g.cubes[c, Int(colour)] == MAX_CUBES_PER_CITY
         outbreak!(g, c, vcat(outbreakignore, [c]))
     else
