@@ -1,4 +1,5 @@
 using Graphs
+# import Base.==
 
 """
     City{I}
@@ -6,12 +7,16 @@ using Graphs
 A city in the game world.
 
 `id` cannot be of type `Int`.
+If `id <: AbstractString`, then it is **case-insensitive**.
+`City`s are considered to be equal iff their `id` fields are equal.
 """
 struct City
     id::Any
     colour::Disease
 end
 export City
+
+Base.:(==)(c1::City, c2::City) = c1.id == c2.id
 
 """
     World
@@ -38,6 +43,26 @@ function World(city::City)
     return World([city], graph, 1)
 end
 
+# TODO: better type signature
+"""
+    World(cities, start = 1)
+
+Construct a [`World`](@ref) with the given `cities`.
+
+`cities` should be a collection of triples (city id, disease, linked cities).
+`start` should be an index (into `cities`) or id of the city which players will start in.
+"""
+function World(cities, start=1)::World
+    w = World([], SimpleGraph(), 0)
+    for (id, disease, links) in cities
+        c = City(id, Disease(disease))
+        addcity!(w, c, links)
+        @debug "City added" city=c w.cities
+    end
+    startcity!(w, start)
+    return w
+end
+
 """
     startcity!(world, city)
 
@@ -60,9 +85,12 @@ Returns `nothing` if the city isn't found.
 function cityindexunchecked(world::World, id)
     findfirst(c -> c.id == id, world.cities)
 end
-function cityindexunchecked(world::World, city::City)
-    findfirst(c -> c.id == city.id, world.cities)
+function cityindexunchecked(world::World, id::AbstractString)
+    findfirst(c -> lowercase(c.id) == lowercase(id), world.cities)
 end
+# Convenience method:"Los Angeles", ["San Francisco", "Chicago", "Mexico City", "Sydney"]),
+# integers are not valid ids so we assume c is the index and return it
+cityindexunchecked(world::World, id::Int) = id
 
 """
     cityindex(world, city[, error])
@@ -77,9 +105,6 @@ function cityindex(world::World, c, e = "City $(c) not found")
     @assert i != nothing e
     return i
 end
-# Convenience method:
-# integers are not valid ids so we assume c is the index and return it
-cityindex(w::World, c::Int, e = "") = c
 export cityindex
 
 """
@@ -107,7 +132,6 @@ Returns the numeric id given to the city.
 
 Throws an error if:
 - `city` is already in `world`
-- any item in `links_to` isn't in the world
 - failure to add the city to the graph occurs
 """
 # TODO: check if ID is already in use?
@@ -124,12 +148,17 @@ function addcity!(world::World, city::City, links_to = [])
     my_id = length(world.cities)
 
     for link in links_to
-        other_id = cityindex(world, link, "Can't link to '$(link.id)' which doesn't exist")
+        other_id = cityindexunchecked(world, link)
 
-        if my_id == other_id
-            @warn("City '$(city.id)' tried to link to itself")
+        if other_id == nothing
+            @error "City tried to link to a non-existent city, skipping" city.id link
             continue
         end
+        if my_id == other_id
+            @error "City tried to link to itself, skipping" city.id
+            continue
+        end
+
         add_edge!(world.graph, my_id, other_id)
     end
 

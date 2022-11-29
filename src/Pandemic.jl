@@ -20,6 +20,25 @@ If `c` is too small, this function will [`pop!`](@ref) as many elements as it ca
 """
 popmany!(c, n) = (pop!(c) for _ = 1:min(n, length(c)))
 
+"""
+    Disease(lit)
+
+Creates a [`Disease`](@ref) from the string `lit`.
+
+`lit` must be an [`AbstractString`](@ref).
+"""
+function Disease(s::AbstractString)::Disease
+    sl = lowercase(s)
+    for i in instances(Disease)
+        if lowercase(string(Symbol(i))) == sl
+            return i
+        end
+    end
+
+    throw(error("Disease '$(s)' not found"))
+end
+Disease(d::Disease) = d
+
 @enum PlayerAction begin
     # Movement
     DriveSail
