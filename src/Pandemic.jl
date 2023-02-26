@@ -146,7 +146,7 @@ function setupgame!(game::Game)::Game
 
     @debug "Preparing draw pile"
     numpiles = Int(game.difficulty)
-    subpilesize = Int(round(length(playercards) / numpiles, RoundUp))
+    subpilesize = round(length(playercards) / numpiles, RoundUp) |> Int
     for _ = 1:numpiles
         pile = collect(popmany!(playercards, subpilesize))
         push!(pile, 0)
@@ -158,7 +158,7 @@ function setupgame!(game::Game)::Game
 
     state = checkstate!(game)
     if state != Playing
-        @warn "Game is already $(state), setting back to Playing"
+        @warn "Bad state after init, setting back to Playing" state
         game.state = Playing
     end
 
@@ -173,7 +173,7 @@ end
 
 Create a new [`Game`](@ref) and set it up for the first turn.
 
-Effectively constructs a [`Game`](@ref) then calls [`setupgame!`](@ref) on it.
+Effectively constructs a [`Game`](@ref) then calls [`Pandemic.setupgame!`](@ref) on it.
 """
 function newgame(world, difficulty, numplayers, rng = MersenneTwister())::Game
     game = Game(world = world, difficulty = difficulty, numplayers = numplayers, rng = rng)
@@ -324,14 +324,15 @@ function outbreak!(g::Game, city, ignore::Vector{Int})
     for neighbour in Graphs.neighbors(g.world.graph, c)
         if neighbour in ignore
             @debug "Ignoring city in outbreak chain" source=city neighbour
-            continue
+        else
+            # TODO: push `c` to `ignore` here?
+            infectcity!(g, neighbour, colour, ignore)
         end
-        infectcity!(g, neighbour, colour, ignore)
     end
 end
 
 """
-    checkstate(game)
+    checkstate!(game)
 
 Check if `game` is won, lost or still in progress.
 

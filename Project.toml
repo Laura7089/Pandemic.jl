@@ -1,6 +1,6 @@
 name = "Pandemic"
 uuid = "2f1a64cf-8e1a-4d5e-af1d-3b57a049fca1"
-authors = ["Laura Demkowicz-Duffy <dev@laurademkowiczduffy.co.uk>"]
+authors = ["Laura Demkowicz-Duffy <dev@demkowiczduffy.co.uk>"]
 version = "0.1.0"
 
 [deps]

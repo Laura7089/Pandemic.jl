@@ -26,12 +26,12 @@ Int values describe how many epidemic cards they add.
 end
 export Introductory, Normal, Heroic
 
-const global STARTING_CARDS_OFFSET = 6
+const global STARTING_HAND_OFFSET = 6
 
 const global CUBES_PER_DISEASE = 24
 const global MAX_STATIONS = 6
 const global INFECTION_RATES = [2, 2, 2, 3, 3, 4, 4]
-const global INITIAL_INFECTIONS = [(3, 3), (2, 2), (1, 1)]
+const global INITIAL_INFECTIONS = [(3, 3), (3, 2), (3, 1)]
 const global CARDS_TO_CURE = 5
 const global MAX_HAND = 7
 """
