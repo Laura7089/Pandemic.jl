@@ -30,6 +30,7 @@ begin
 	Pkg.add(path=".")
 	using Pandemic
 	using Random
+	using Serialization
 	using PlutoUI
 	using Glob
 	using WGLMakie, GraphMakie, JSServe
@@ -45,17 +46,49 @@ This is a notebook intended to let one play with and test the Pandemic.jl librar
 Functionality will be added to allow one to select different AIs and evaluate their characteristics.
 """
 
-# ╔═╡ 3f377642-c059-47ac-9684-e8b029ab7b4b
+# ╔═╡ b30b68f9-82f3-4e83-9b79-863e872a19a1
 md"""
-## Setup
+$(@bind clearstate PlutoUI.Button("Clear State Upload"))
 """
 
 # ╔═╡ 2a1691ca-f4b5-412b-bdf8-96e94280934a
 begin
+	clearstate
+	md"""
+	## Setup
+	
+	Game state: $(@bind state FilePicker())
+	"""
+end
+
+# ╔═╡ 503d0c6f-646c-4488-bd97-242805336f9f
+if state == nothing
 	maps_options = glob("maps/*.jl")
 	md"""
 	Select a map script to load:
 	$(@bind mapfile Select(maps_options))
+
+	Randomise seed: $(@bind randomise CheckBox(default=true))
+	"""
+else
+	md"""
+	*Saved game state provided, input disabled*
+	"""
+end
+
+# ╔═╡ b983b5c2-4a11-402e-9d8a-3563f7828468
+if state == nothing
+	if randomise
+		md"""
+		*Seed input disabled*
+		"""
+	else
+		md"""
+		Seed (integer): $(@bind seed PlutoUI.TextField(default="111"))
+		"""
+	end
+else 
+	md"""
 	"""
 end
 
@@ -109,21 +142,29 @@ end
 
 # ╔═╡ 2bedf5c9-7717-49dd-a730-3d512ace7f4c
 md"""
-### Starting Position
+### Position
 """
 
-# ╔═╡ fbcf2a42-b36f-4a2e-99b4-cfd880a607d5
+# ╔═╡ 94583057-a175-4a52-b3b5-5b64fa7c90d7
 md"""
-Rerun game setup, including map loading: $(@bind restartgame PlutoUI.Button("Regenerate"))
+Rerun setup, including map loading: $(@bind restartgame PlutoUI.Button("Reload"))
 """
 
 # ╔═╡ 59c55dde-1338-47ee-8d7e-a686e7eb56bd
 # ╠═╡ show_logs = false
 begin
 	restartgame
-	worldmap = include(mapfile)
-	rng = MersenneTwister()
-	game = newgame(worldmap, Introductory, 1, rng)
+	game = if state != nothing
+		deserialize(IOBuffer(state["data"]))
+	else
+		worldmap = include(mapfile)
+		rng = if randomise 
+			MersenneTwister()
+		else
+			MersenneTwister(parse(Int, seed))
+		end
+		newgame(worldmap, Introductory, 1, rng)
+	end
 end
 
 # ╔═╡ 3db533f5-7429-4804-a20a-6168055b631e
@@ -132,16 +173,29 @@ plotmap(game, false)
 # ╔═╡ 77196933-ea0b-4cfe-9aa8-64c800b3a3b4
 printcubes(game)
 
+# ╔═╡ d30ba5a4-d2ae-4421-bde1-1b933f1e4936
+begin
+	buf = IOBuffer()
+	serialize(buf, game)
+	stateraw = take!(buf)
+	md"""
+	Download current state: $(DownloadButton(stateraw, "game.obj"))
+	"""
+end
+
 # ╔═╡ Cell order:
 # ╠═c09c853d-2da1-41cd-b9dc-3c00d6a6c787
 # ╟─4e99c094-397a-42a8-b2b0-658a1ac52a99
-# ╟─3f377642-c059-47ac-9684-e8b029ab7b4b
 # ╟─2a1691ca-f4b5-412b-bdf8-96e94280934a
+# ╟─b30b68f9-82f3-4e83-9b79-863e872a19a1
+# ╟─503d0c6f-646c-4488-bd97-242805336f9f
+# ╟─b983b5c2-4a11-402e-9d8a-3563f7828468
 # ╟─59c55dde-1338-47ee-8d7e-a686e7eb56bd
 # ╟─c1426063-4a70-42c1-acbf-9889d22c9b69
 # ╟─8825f3cc-0cbd-4050-b984-7777040f898d
-# ╠═60beac5c-3b6e-49dc-ba02-639eed085c47
+# ╟─60beac5c-3b6e-49dc-ba02-639eed085c47
 # ╟─2bedf5c9-7717-49dd-a730-3d512ace7f4c
 # ╠═3db533f5-7429-4804-a20a-6168055b631e
 # ╠═77196933-ea0b-4cfe-9aa8-64c800b3a3b4
-# ╟─fbcf2a42-b36f-4a2e-99b4-cfd880a607d5
+# ╟─94583057-a175-4a52-b3b5-5b64fa7c90d7
+# ╟─d30ba5a4-d2ae-4421-bde1-1b933f1e4936
