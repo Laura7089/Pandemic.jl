@@ -14,13 +14,3 @@ format target=SRC_DIR:
 # Get an interactive notebook
 notebook:
     {{ JULIA }} -e 'using Pluto; Pluto.run()'
-
-# Create a local registry and register the package with it
-registry:
-    {{ JULIA }} --project <(echo ' \
-        using LocalRegistry; \
-        try create_registry("{{ REG_NAME }}", "", push = true); \
-        catch end; \
-        using Pandemic; \
-        register(Pandemic, registry = "{{ REG_NAME }}"); \
-    ')
