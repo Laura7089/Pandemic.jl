@@ -29,8 +29,7 @@ begin
 	Pkg.add("NetworkLayout")
 	Pkg.add(path=".")
 	using Pandemic
-	using Random
-	using Serialization
+	using Random, Serialization
 	using PlutoUI
 	using Glob
 	using WGLMakie, GraphMakie, JSServe
@@ -48,7 +47,8 @@ Functionality will be added to allow one to select different AIs and evaluate th
 
 # ╔═╡ b30b68f9-82f3-4e83-9b79-863e872a19a1
 md"""
-$(@bind clearstate PlutoUI.Button("Reset All Inputs"))
+$(@bind restartgame PlutoUI.Button("Rerun Setup/Map Scripts"))
+$(@bind clearstate PlutoUI.Button("Reset to Defaults"))
 """
 
 # ╔═╡ 2a1691ca-f4b5-412b-bdf8-96e94280934a
@@ -61,36 +61,53 @@ begin
 	"""
 end
 
-# ╔═╡ c1426063-4a70-42c1-acbf-9889d22c9b69
-function citylabelstring(game::Game, c)::String
-	cube_chars = Dict(
-		Pandemic.Blue => "🟦",
-		Pandemic.Black => "◼️",
-		Pandemic.Red => "🟥",
-		Pandemic.Yellow => "🟨",
-	)
-	city = game.world.cities[c]
-	cubestring = ": "
-	for (disease, emoji) in cube_chars
-		if (numcubes = game.cubes[c, Int(disease)]) != 0
-			cubestring *= repeat(emoji, numcubes)
-		end
-	end
-	if length(cubestring) > 2
-		city.id * cubestring
+# ╔═╡ 503d0c6f-646c-4488-bd97-242805336f9f
+if state == nothing
+	restartgame
+	maps_options = glob("maps/*.jl")
+	md"""
+	Select a map script to load:
+	$(@bind mapfile Select(maps_options))
+
+	Seed (integer, leave blank for random): $(@bind seed PlutoUI.TextField(default="111"))
+	"""
+else
+	md"""
+	*Saved game state provided, seed/map disabled*
+	"""
+end
+
+# ╔═╡ 59c55dde-1338-47ee-8d7e-a686e7eb56bd
+# ╠═╡ show_logs = false
+game = if isnothing(state)
+	worldmap = include(mapfile)
+	rng = MersenneTwister(if seed == "" 
+		nothing
 	else
-		city.id
+		parse(Int, seed)
+	end)
+	newgame(worldmap, Introductory, 1, rng)
+else
+	deserialize(IOBuffer(state["data"]))
+end
+
+# ╔═╡ 60beac5c-3b6e-49dc-ba02-639eed085c47
+begin
+	import Pandemic: Formatting
+	function printextracityinfo(game::Game)
+		for c in 1:length(game.world.cities)
+			if sum(game.cubes[c, :]) != 0
+				println(Pandemic.Formatting.city(game, c))
+			end
+		end
 	end
 end
 
 # ╔═╡ 8825f3cc-0cbd-4050-b984-7777040f898d
-function plotmap(game::Game, cubes = true)
+function plotmap(game::Game; extrainfo = false)
 	colours = [String(Symbol(c.colour)) for c in game.world.cities]
-	labels = if cubes
-		[
-			c.id * " " * repeat("▪️", game.cubes[ci, Int(c.colour)])
-			for (ci, c) in enumerate(game.world.cities)
-		]
+	labels = if extrainfo
+		[citylabel(game, ci) for (ci, _) in enumerate(game.world.cities)]
 	else
 		[c.id for c in game.world.cities]
 	end
@@ -104,78 +121,16 @@ function plotmap(game::Game, cubes = true)
 	)
 end
 
-# ╔═╡ 60beac5c-3b6e-49dc-ba02-639eed085c47
-function printcubes(game::Game)
-	for c in range(1, length(game.world.cities))
-		if sum(game.cubes[c, :]) != 0
-			println(citylabelstring(game, c))
-		end
-	end
-end
-
 # ╔═╡ 2bedf5c9-7717-49dd-a730-3d512ace7f4c
 md"""
-### Position
+### Starting Position
 """
-
-# ╔═╡ 94583057-a175-4a52-b3b5-5b64fa7c90d7
-md"""
-Rerun setup, including map loading: $(@bind restartgame PlutoUI.Button("Reload"))
-"""
-
-# ╔═╡ 503d0c6f-646c-4488-bd97-242805336f9f
-if state == nothing
-	restartgame
-	maps_options = glob("maps/*.jl")
-	md"""
-	Select a map script to load:
-	$(@bind mapfile Select(maps_options))
-
-	Randomise seed: $(@bind randomise CheckBox(default=true))
-	"""
-else
-	md"""
-	*Saved game state provided, input disabled*
-	"""
-end
-
-# ╔═╡ b983b5c2-4a11-402e-9d8a-3563f7828468
-if state == nothing
-	if randomise
-		md"""
-		*Seed input disabled*
-		"""
-	else
-		md"""
-		Seed (integer): $(@bind seed PlutoUI.TextField(default="111"))
-		"""
-	end
-else 
-	md"""
-	"""
-end
-
-# ╔═╡ 59c55dde-1338-47ee-8d7e-a686e7eb56bd
-# ╠═╡ show_logs = false
-begin
-	game = if state != nothing
-		deserialize(IOBuffer(state["data"]))
-	else
-		worldmap = include(mapfile)
-		rng = if randomise 
-			MersenneTwister()
-		else
-			MersenneTwister(parse(Int, seed))
-		end
-		newgame(worldmap, Introductory, 1, rng)
-	end
-end
 
 # ╔═╡ 3db533f5-7429-4804-a20a-6168055b631e
-plotmap(game, false)
+plotmap(game)
 
 # ╔═╡ 77196933-ea0b-4cfe-9aa8-64c800b3a3b4
-printcubes(game)
+printextracityinfo(game)
 
 # ╔═╡ d30ba5a4-d2ae-4421-bde1-1b933f1e4936
 begin
@@ -183,7 +138,7 @@ begin
 	serialize(buf, game)
 	stateraw = take!(buf)
 	md"""
-	Download current state: $(DownloadButton(stateraw, "game.obj"))
+	Save start state: $(DownloadButton(stateraw, "game.obj"))
 	"""
 end
 
@@ -193,13 +148,10 @@ end
 # ╟─2a1691ca-f4b5-412b-bdf8-96e94280934a
 # ╟─b30b68f9-82f3-4e83-9b79-863e872a19a1
 # ╟─503d0c6f-646c-4488-bd97-242805336f9f
-# ╟─b983b5c2-4a11-402e-9d8a-3563f7828468
 # ╟─59c55dde-1338-47ee-8d7e-a686e7eb56bd
-# ╟─c1426063-4a70-42c1-acbf-9889d22c9b69
+# ╠═60beac5c-3b6e-49dc-ba02-639eed085c47
 # ╟─8825f3cc-0cbd-4050-b984-7777040f898d
-# ╟─60beac5c-3b6e-49dc-ba02-639eed085c47
 # ╟─2bedf5c9-7717-49dd-a730-3d512ace7f4c
 # ╠═3db533f5-7429-4804-a20a-6168055b631e
 # ╠═77196933-ea0b-4cfe-9aa8-64c800b3a3b4
-# ╟─94583057-a175-4a52-b3b5-5b64fa7c90d7
 # ╟─d30ba5a4-d2ae-4421-bde1-1b933f1e4936
