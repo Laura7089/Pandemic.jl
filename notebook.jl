@@ -48,7 +48,7 @@ Functionality will be added to allow one to select different AIs and evaluate th
 
 # ╔═╡ b30b68f9-82f3-4e83-9b79-863e872a19a1
 md"""
-$(@bind clearstate PlutoUI.Button("Clear State Upload"))
+$(@bind clearstate PlutoUI.Button("Reset All Inputs"))
 """
 
 # ╔═╡ 2a1691ca-f4b5-412b-bdf8-96e94280934a
@@ -61,37 +61,6 @@ begin
 	"""
 end
 
-# ╔═╡ 503d0c6f-646c-4488-bd97-242805336f9f
-if state == nothing
-	maps_options = glob("maps/*.jl")
-	md"""
-	Select a map script to load:
-	$(@bind mapfile Select(maps_options))
-
-	Randomise seed: $(@bind randomise CheckBox(default=true))
-	"""
-else
-	md"""
-	*Saved game state provided, input disabled*
-	"""
-end
-
-# ╔═╡ b983b5c2-4a11-402e-9d8a-3563f7828468
-if state == nothing
-	if randomise
-		md"""
-		*Seed input disabled*
-		"""
-	else
-		md"""
-		Seed (integer): $(@bind seed PlutoUI.TextField(default="111"))
-		"""
-	end
-else 
-	md"""
-	"""
-end
-
 # ╔═╡ c1426063-4a70-42c1-acbf-9889d22c9b69
 function citylabelstring(game::Game, c)::String
 	cube_chars = Dict(
@@ -101,13 +70,17 @@ function citylabelstring(game::Game, c)::String
 		Pandemic.Yellow => "🟨",
 	)
 	city = game.world.cities[c]
-	label = city.id * " "
+	cubestring = ": "
 	for (disease, emoji) in cube_chars
 		if (numcubes = game.cubes[c, Int(disease)]) != 0
-			label = label * repeat(emoji, numcubes)
+			cubestring *= repeat(emoji, numcubes)
 		end
 	end
-	label
+	if length(cubestring) > 2
+		city.id * cubestring
+	else
+		city.id
+	end
 end
 
 # ╔═╡ 8825f3cc-0cbd-4050-b984-7777040f898d
@@ -150,10 +123,41 @@ md"""
 Rerun setup, including map loading: $(@bind restartgame PlutoUI.Button("Reload"))
 """
 
+# ╔═╡ 503d0c6f-646c-4488-bd97-242805336f9f
+if state == nothing
+	restartgame
+	maps_options = glob("maps/*.jl")
+	md"""
+	Select a map script to load:
+	$(@bind mapfile Select(maps_options))
+
+	Randomise seed: $(@bind randomise CheckBox(default=true))
+	"""
+else
+	md"""
+	*Saved game state provided, input disabled*
+	"""
+end
+
+# ╔═╡ b983b5c2-4a11-402e-9d8a-3563f7828468
+if state == nothing
+	if randomise
+		md"""
+		*Seed input disabled*
+		"""
+	else
+		md"""
+		Seed (integer): $(@bind seed PlutoUI.TextField(default="111"))
+		"""
+	end
+else 
+	md"""
+	"""
+end
+
 # ╔═╡ 59c55dde-1338-47ee-8d7e-a686e7eb56bd
 # ╠═╡ show_logs = false
 begin
-	restartgame
 	game = if state != nothing
 		deserialize(IOBuffer(state["data"]))
 	else
