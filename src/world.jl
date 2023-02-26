@@ -52,12 +52,12 @@ Construct a [`World`](@ref) with the given `cities`.
 `cities` should be a collection of triples (city id, disease, linked cities).
 `start` should be an index (into `cities`) or id of the city which players will start in.
 """
-function World(cities, start=1)::World
+function World(cities, start = 1)::World
     w = World([], SimpleGraph(), 0)
     for (id, disease, links) in cities
         c = City(id, Disease(disease))
         addcity!(w, c, links)
-        @debug "City added" city=c w.cities
+        @debug "City added" city = c w.cities
     end
     startcity!(w, start)
     return w

@@ -1,7 +1,7 @@
 module Pandemic
 
 # TODO: tests
-# TODO: is @assert a poor performance method? (I hope not :( )
+# TODO: replace @assert with proper checks
 # TODO: event cards?
 
 include("./parameters.jl")
@@ -154,7 +154,7 @@ function setupgame!(game::Game)::Game
         shuffle!(game.rng, pile)
         game.drawpile = vcat(game.drawpile, pile)
     end
-    @assert(length(playercards) == 0) # Make sure we used up all the player cards
+    @assert length(playercards) == 0 # Make sure we used up all the player cards
 
     state = checkstate!(game)
     if state != Playing
@@ -301,7 +301,7 @@ Pass `outbreakignore = [..]` to whitelist given cities from outbreaks resulting 
 function infectcity!(g::Game, city, colour = nothing, outbreakignore::Vector{Int} = [])
     c, city = getcity(g.world, city)
     colour = colour == nothing ? city.colour : colour
-    @debug "Infecting city" city disease=colour
+    @debug "Infecting city" city disease = colour
     if g.cubes[c, Int(colour)] == MAX_CUBES_PER_CITY
         outbreak!(g, c, vcat(outbreakignore, [c]))
     else
@@ -323,7 +323,7 @@ function outbreak!(g::Game, city, ignore::Vector{Int})
     colour = city.colour
     for neighbour in Graphs.neighbors(g.world.graph, c)
         if neighbour in ignore
-            @debug "Ignoring city in outbreak chain" source=city neighbour
+            @debug "Ignoring city in outbreak chain" source = city neighbour
         else
             # TODO: push `c` to `ignore` here?
             infectcity!(g, neighbour, colour, ignore)
@@ -409,5 +409,9 @@ function cubesinplay(game::Game, d::Disease)::Int
 end
 
 include("./Actions.jl")
+
+include("./Formatting.jl")
+export Formatting
+
 
 end

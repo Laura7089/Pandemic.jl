@@ -11,6 +11,12 @@ Int values must ascend from 1.
     Red = 3
     Yellow = 4
 end
+const global CUBE_CHARS = Dict(
+    Pandemic.Blue => "🟦",
+    Pandemic.Black => "◼️",
+    Pandemic.Red => "🟥",
+    Pandemic.Yellow => "🟨",
+)
 
 """
     Difficulty
