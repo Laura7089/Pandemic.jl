@@ -35,7 +35,7 @@ function Disease(s::AbstractString)::Disease
         end
     end
 
-    throw(error("Disease '$(s)' not found"))
+    throw(error("Disease '$s' not found"))
 end
 Disease(d::Disease) = d
 
@@ -218,7 +218,7 @@ function drawcards!(game::Game, p, predicate)
         discard = Iterators.take(predicate(game), numtodiscard)
         @assert length(discard) < numtodiscard "Predicate didn't return enough cards to discard"
         for c in discard
-            i = findfirst(x -> x == c, game.hands[game.playerturn])
+            i = findfirst(==(c), game.hands[game.playerturn])
             discard!(game, game.playerturn, i)
         end
     end

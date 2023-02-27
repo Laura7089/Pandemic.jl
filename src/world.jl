@@ -100,7 +100,7 @@ Get the index of a [`City`](@ref) into `world.cities` and `world.graph`.
 Throws an error if the city isn't found.
 Pass the parameter `error` to override the error text.
 """
-function cityindex(world::World, c, e = "City $(c) not found")
+function cityindex(world::World, c, e = "City $c not found")
     i = cityindexunchecked(world, c)
     @assert i != nothing e
     return i

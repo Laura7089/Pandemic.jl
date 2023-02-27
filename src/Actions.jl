@@ -29,7 +29,7 @@ Throws an error if `player` is not in an adjacent city.
 function move_one!(g::Game, p, dest)
     source = g.playerlocs[p]
     dest, destc = getcity(g.world, dest)
-    @assert dest in neighbors(g.world.graph, source) "Player $(p) is not in a city adjacent to '$(destc)'"
+    @assert dest in neighbors(g.world.graph, source) "Player $p is not in a city adjacent to '$destc'"
 
     g.playerlocs[p] = dest
 end
@@ -47,8 +47,8 @@ function move_direct!(g::Game, p, dest)
     source = g.playerlocs[p]
     dest, destc = getcity(g.world, dest)
 
-    handloc = findfirst(x -> x == dest, g.hands[p])
-    @assert handloc != nothing "Player $(p) does not have the card for '$(destc)' in their hand"
+    handloc = findfirst(==(dest), g.hands[p])
+    @assert handloc != nothing "Player $p does not have the card for '$destc' in their hand"
 
     # TODO: above assert is irrelevant? `discard` will error if they don't have it
     discard!(g, p, handloc)
@@ -68,8 +68,8 @@ function move_chartered!(g::Game, p, dest)
     source = g.playerlocs[p]
     dest = cityindex(g.world, dest)
 
-    handloc = findfirst(x -> x == source, g.hands[p])
-    @assert handloc != nothing "Player $(p) does not have the '$(source)' card"
+    handloc = findfirst(==(source), g.hands[p])
+    @assert handloc != nothing "Player $p does not have the '$source' card"
 
     discard!(g, p, handloc)
     g.playerlocs[p] = dest
@@ -109,17 +109,17 @@ Throws errors if:
 function buildstation!(g::Game, p, city, move_from = nothing)
     c, city = getcity(g.world, city)
 
-    @assert g.playerlocs[p] == c "Player $(p) is not in $(city)"
+    @assert g.playerlocs[p] == c "Player $p is not in $city"
 
     if stationcount(g) == MAX_STATIONS
-        @assert move_from != nothing "Max stations reached ($(MAX_STATIONS)) but move_from is empty!"
+        @assert move_from != nothing "Max stations reached ($MAX_STATIONS) but move_from is empty!"
 
         move_from = cityindex(g.world, move_from)
         g.stations[move_from] = false
     end
 
-    handi = findfirst(x -> x == c, g.hands[player])
-    @assert handi != nothing "Player $(p) doesn't have $(city) in their hand"
+    handi = findfirst(==(c), g.hands[player])
+    @assert handi != nothing "Player $p doesn't have $city in their hand"
 
     discard!(g, p, handi)
     g.stations[city] = true
@@ -139,8 +139,8 @@ Throws errors if:
 function treatdisease!(g::Game, p, city, colour::Disease)
     c, city = getcity(g.world, city)
     d = Int(colour)
-    @assert g.playerlocs[p] == c "Player $(p) is not in '$(city)'"
-    @assert g.cubes[c, d] != 0 "City '$(city)' has no $(colour) disease cubes"
+    @assert g.playerlocs[p] == c "Player $p is not in '$city'"
+    @assert g.cubes[c, d] != 0 "City '$city' has no $colour disease cubes"
 
     @match g.diseasestate[d] begin
         Spreading => (g.cubes[c, d] -= 1)
@@ -159,10 +159,10 @@ Throws if either player isn't in `city`.
 """
 function shareknowledge!(g::Game, p1, p2, city)
     c, city = getcity(g.world, city)
-    @assert g.playerlocs[p1] == c && g.playerlocs[p2] == c "Players $(p1) and $(p2) are not in '$(city)'"
+    @assert g.playerlocs[p1] == c && g.playerlocs[p2] == c "Players $p1 and $p2 are not in '$city'"
 
-    handi = findfirst(x -> x == card, g.hands[p1])
-    @assert handi != nothing "$(p1) does not have $(card) in their hand"
+    handi = findfirst(==(card), g.hands[p1])
+    @assert handi != nothing "$p1 does not have $card in their hand"
     push!(g.hands[p2], popat!(g.hands[p1], handi))
 end
 export shareknowledge!
@@ -181,7 +181,7 @@ Throws an error if:
 """
 function findcure!(g::Game, p, d::Disease)
     eligiblecards = filter(x -> g.world.cities[x].colour == d, g.hands[p])
-    @assert length(eligiblecards) >= CARDS_TO_CURE "Player $(p) does not have enough $(d) cards"
+    @assert length(eligiblecards) >= CARDS_TO_CURE "Player $p does not have enough $d cards"
     _findcure!(g, p, d, eligiblecards[begin:5])
 end
 function findcure!(g::Game, p, d::Disease, cards)
@@ -211,7 +211,7 @@ function _findcure!(g::Game, p, d::Disease, cards)
 
     for card in cards
         # Find and delete the card from the player's hand
-        i = findfirst(c -> c == card, g.hands[p])
+        i = findfirst(==(card), g.hands[p])
         discard!(g, p, i)
     end
 end

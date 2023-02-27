@@ -7,9 +7,9 @@ Int values must ascend from 1.
 """
 @enum Disease begin
     Black = 1
-    Blue = 2
-    Red = 3
-    Yellow = 4
+    Blue
+    Red
+    Yellow
 end
 const global CUBE_CHARS = Dict(
     Pandemic.Blue => "🟦",
