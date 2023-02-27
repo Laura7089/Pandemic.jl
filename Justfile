@@ -1,5 +1,4 @@
 SRC_DIR := "./src"
-REG_NAME := "pandemicreg"
 
 JULIA := "julia"
 
@@ -10,7 +9,3 @@ interactive:
 # Format all files in `target`
 format target=SRC_DIR:
     {{ JULIA }} -E 'using JuliaFormatter; format("{{ target }}")'
-
-# Get an interactive notebook
-notebook:
-    {{ JULIA }} -e 'using Pluto; Pluto.run()'
