@@ -16,7 +16,15 @@ module Actions
 
 using Match
 using Pandemic:
-    stationcount, MAX_STATIONS, Game, Disease, CARDS_TO_CURE, getcity, discard!, cityindex
+    stationcount,
+    MAX_STATIONS,
+    Game,
+    Disease,
+    CARDS_TO_CURE,
+    getcity,
+    discard!,
+    cityindex,
+    assert
 using Graphs
 
 """
@@ -29,7 +37,10 @@ Throws an error if `player` is not in an adjacent city.
 function move_one!(g::Game, p, dest)
     source = g.playerlocs[p]
     dest, destc = getcity(g.world, dest)
-    @assert dest in neighbors(g.world.graph, source) "Player $p is not in a city adjacent to '$destc'"
+    assert(
+        dest in neighbors(g.world.graph, source),
+        "Player $p is not in a city adjacent to '$destc'",
+    )
 
     g.playerlocs[p] = dest
 end
@@ -48,9 +59,7 @@ function move_direct!(g::Game, p, dest)
     dest, destc = getcity(g.world, dest)
 
     handloc = findfirst(==(dest), g.hands[p])
-    @assert handloc != nothing "Player $p does not have the card for '$destc' in their hand"
-
-    # TODO: above assert is irrelevant? `discard` will error if they don't have it
+    # no need to assert since `discard` will error if they don't have the card
     discard!(g, p, handloc)
     g.playerlocs[p] = dest
 end
@@ -69,8 +78,7 @@ function move_chartered!(g::Game, p, dest)
     dest = cityindex(g.world, dest)
 
     handloc = findfirst(==(source), g.hands[p])
-    @assert handloc != nothing "Player $p does not have the '$source' card"
-
+    # no need to assert since `discard` will error if they don't have the card
     discard!(g, p, handloc)
     g.playerlocs[p] = dest
 end
@@ -87,8 +95,8 @@ function move_station!(g::Game, p, dest)
     source = g.playerlocs[p]
     dest = cityindex(g.world, dest)
 
-    @assert g.stations[source] "Source doesn't have a research station"
-    @assert g.stations[dest] "Dest doesn't have a research station"
+    assert(g.stations[source], "Source doesn't have a research station")
+    assert(g.stations[dest], "Dest doesn't have a research station")
 
     g.playerlocs[p] = dest
 end
@@ -109,18 +117,20 @@ Throws errors if:
 function buildstation!(g::Game, p, city, move_from = nothing)
     c, city = getcity(g.world, city)
 
-    @assert g.playerlocs[p] == c "Player $p is not in $city"
+    assert(g.playerlocs[p] == c, "Player $p is not in $city")
 
     if stationcount(g) == MAX_STATIONS
-        @assert move_from != nothing "Max stations reached ($MAX_STATIONS) but move_from is empty!"
+        assert(
+            move_from != nothing,
+            "Max stations reached ($MAX_STATIONS) but move_from is empty!",
+        )
 
         move_from = cityindex(g.world, move_from)
         g.stations[move_from] = false
     end
 
     handi = findfirst(==(c), g.hands[player])
-    @assert handi != nothing "Player $p doesn't have $city in their hand"
-
+    # no need to assert since `discard` will error if they don't have the card
     discard!(g, p, handi)
     g.stations[city] = true
 end
@@ -139,12 +149,18 @@ Throws errors if:
 function treatdisease!(g::Game, p, city, colour::Disease)
     c, city = getcity(g.world, city)
     d = Int(colour)
-    @assert g.playerlocs[p] == c "Player $p is not in '$city'"
-    @assert g.cubes[c, d] != 0 "City '$city' has no $colour disease cubes"
+    assert(g.playerlocs[p] == c, "Player $p is not in '$city'")
+    assert(g.cubes[c, d] != 0, "City '$city' has no $colour disease cubes")
 
     @match g.diseasestate[d] begin
         Spreading => (g.cubes[c, d] -= 1)
-        Cured => (g.cubes[c, d] = 0) # TODO: check if eradicated
+        Cured => begin
+            g.cubes[c, d] = 0
+            if sum(g.cubes[:, d]) == 0
+                g.diseasestate[d] = Eradicated
+            end
+        end
+        # Unreachable because we checked for cubes above
         Eradicated => throw(error("unreachable"))
     end
 end
@@ -159,10 +175,13 @@ Throws if either player isn't in `city`.
 """
 function shareknowledge!(g::Game, p1, p2, city)
     c, city = getcity(g.world, city)
-    @assert g.playerlocs[p1] == c && g.playerlocs[p2] == c "Players $p1 and $p2 are not in '$city'"
+    assert(
+        g.playerlocs[p1] == c && g.playerlocs[p2] == c,
+        "Players $p1 and $p2 are not in '$city'",
+    )
 
     handi = findfirst(==(card), g.hands[p1])
-    @assert handi != nothing "$p1 does not have $card in their hand"
+    # no need to assert, `popat!` will throw an error if `handi == nothing`
     push!(g.hands[p2], popat!(g.hands[p1], handi))
 end
 export shareknowledge!
@@ -181,13 +200,16 @@ Throws an error if:
 """
 function findcure!(g::Game, p, d::Disease)
     eligiblecards = filter(x -> g.world.cities[x].colour == d, g.hands[p])
-    @assert length(eligiblecards) >= CARDS_TO_CURE "Player $p does not have enough $d cards"
+    assert(
+        length(eligiblecards) >= CARDS_TO_CURE,
+        "Player $p does not have enough $d cards",
+    )
     _findcure!(g, p, d, eligiblecards[begin:5])
 end
 function findcure!(g::Game, p, d::Disease, cards)
-    @assert length(cards) == CARDS_TO_CURE
-    @assert all(c -> g.world.cities[c].colour == d, cards) "Card colours differ"
-    @assert cards ⊆ g.hands[p] "Player does not have the requested cards"
+    assert(length(cards) == CARDS_TO_CURE)
+    assert(all(c -> g.world.cities[c].colour == d, cards), "Card colours differ")
+    assert(cards ⊆ g.hands[p], "Player does not have the requested cards")
     _findcure!(g, p, d, cards)
 end
 export findcure!
@@ -201,7 +223,7 @@ Doesn't make many assertions about the arguments.
 """
 function _findcure!(g::Game, p, d::Disease, cards)
     # We know `cards` is entirely valid at this point
-    @assert g.stations[g.playerlocs[p]] "No station at player's location"
+    assert(g.stations[g.playerlocs[p]], "No station at player's location")
 
     g.diseases[d] = if cubesinplay(g, d) == 0
         Eradicated

@@ -1,8 +1,18 @@
 module Pandemic
 
 # TODO: tests
-# TODO: replace @assert with proper checks
 # TODO: event cards?
+
+"""
+    assert(cond[, errortext])
+
+Throw an [`AssertionError`](@ref) with the `errortext` message if `cond` does not hold.
+"""
+function assert(cond, errortext = "Assertion failed")
+    if !cond
+        throw(AssertionError(errortext))
+    end
+end
 
 include("./parameters.jl")
 include("./world.jl")
@@ -142,7 +152,7 @@ function setupgame!(game::Game)::Game
             push!(game.infectiondiscard, c)
         end
     end
-    @assert cubeslegal(game) "Too many cubes dealt out in setup"
+    assert(cubeslegal(game), "Too many cubes dealt out in setup")
 
     @debug "Preparing draw pile"
     numpiles = Int(game.difficulty)
@@ -154,7 +164,7 @@ function setupgame!(game::Game)::Game
         shuffle!(game.rng, pile)
         game.drawpile = vcat(game.drawpile, pile)
     end
-    @assert length(playercards) == 0 # Make sure we used up all the player cards
+    assert(length(playercards) == 0) # Make sure we used up all the player cards
 
     state = checkstate!(game)
     if state != Playing
@@ -216,7 +226,10 @@ function drawcards!(game::Game, p, predicate)
         @info "Hand too big, discarding cards" game.playerturn handsize MAX_HAND
 
         discard = Iterators.take(predicate(game), numtodiscard)
-        @assert length(discard) < numtodiscard "Predicate didn't return enough cards to discard"
+        assert(
+            length(discard) < numtodiscard,
+            "Predicate didn't return enough cards to discard",
+        )
         for c in discard
             i = findfirst(==(c), game.hands[game.playerturn])
             discard!(game, game.playerturn, i)

@@ -5,9 +5,7 @@ Human-readable string representations of various parts of the game.
 """
 module Formatting
 
-import ..Game
-import ..Disease
-import ..CUBE_CHARS
+using Pandemic: Game, Disease, CUBE_CHARS
 
 """
     citycubes(game, c[; reprs])
