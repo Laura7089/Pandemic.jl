@@ -1,3 +1,8 @@
+"""
+    Pandemic
+
+A simple implementation of the logic for the cooperative board game [Pandemic](https://en.wikipedia.org/wiki/Pandemic_(board_game)).
+"""
 module Pandemic
 
 # TODO: tests
@@ -422,9 +427,9 @@ function cubesinplay(game::Game, d::Disease)::Int
 end
 
 include("./Actions.jl")
+export Actions
 
 include("./Formatting.jl")
-export Formatting
 
 include("./Maps.jl")
 
