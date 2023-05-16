@@ -433,4 +433,13 @@ include("./Formatting.jl")
 
 include("./Maps.jl")
 
+using PrecompileTools
+
+# Precompilation for speedup
+@compile_workload begin
+    map = Pandemic.Maps.circle12()
+    g = Pandemic.newgame(map, Pandemic.Introductory, 4)
+    checkstate!(g)
+end
+
 end

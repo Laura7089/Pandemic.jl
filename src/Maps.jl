@@ -10,7 +10,7 @@ A simple world with 12 cities arranged in a 2-row concentric ring, with quadrant
 """
 function circle12()::World
     # Disable logs since we know this map is ok
-    with_logger(NullLogger) do
+    with_logger(NullLogger()) do
         World([
             # Blue
             ("blue1", Blue, ["blue2", "blue3", "red2"]),
