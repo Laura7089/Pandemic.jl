@@ -54,19 +54,6 @@ function Disease(s::AbstractString)::Disease
 end
 Disease(d::Disease) = d
 
-@enum PlayerAction begin
-    # Movement
-    DriveSail
-    DirectFlight
-    CharterFlight
-    ShuttleFlight
-    # Other actions
-    BuildStation
-    TreatDisease
-    ShareKnowledge
-    DiscoverCure
-end
-
 """
     DiseaseState
 
@@ -100,6 +87,8 @@ export GameState
 A complete state of an in-progress or finished game session.
 
 Holds the hands, decks, cubes, research stations, settings, counters and RNG for a session.
+
+See also [`newgame`](@ref), [`setupgame!`](@ref).
 """
 @with_kw mutable struct Game{R<:AbstractRNG}
     world::World
@@ -138,6 +127,8 @@ export Game
 (Re-)Run setup on an existing [`Game`](@ref).
 
 If the game is already in an end state once this has finished, this function will emit a warning then set the state of the game back to `Playing` for setup convenience.
+
+See also [`newgame`](@ref).
 """
 function setupgame!(game::Game)::Game
     @debug "Dealing hands"
