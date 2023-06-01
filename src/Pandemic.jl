@@ -222,7 +222,7 @@ function drawcards!(game::Game, p, predicate)
     handsize = length(game.hands[game.playerturn])
     if handsize > MAX_HAND
         numtodiscard = MAX_HAND - handsize
-        @info "Hand too big, discarding cards" game.playerturn handsize MAX_HAND
+        @debug "Hand too big, discarding cards" game.playerturn handsize MAX_HAND
 
         discard = Iterators.take(predicate(game), numtodiscard)
         assert(
@@ -261,7 +261,7 @@ function epidemic!(game::Game, city)
     game.infectionrateindex += 1
 
     c, city = getcity(game.world, city)
-    @info "Epidemic" city
+    @debug "Epidemic" city
 
     # Step 2
     if game.cubes[c, city.colour] != 0
@@ -331,7 +331,7 @@ Ignore any cities in `ignore` in chain outbreaks.
 function outbreak!(g::Game, city, ignore::Vector{Int})
     g.outbreaks += 1
     c, city = getcity(g.world, city)
-    @info "Outbreak" city
+    @debug "Outbreak" city
     colour = city.colour
     for neighbour in Graphs.neighbors(g.world.graph, c)
         if neighbour in ignore
@@ -353,19 +353,19 @@ Updates `game.state` if it has changed.
 function checkstate!(g::Game)::GameState
     # Game is already over
     if g.state != Playing
-        @info "Game already ended"
+        @debug "Game already ended"
         return g.state
     end
 
     # All cures have been found
     if all(x -> x in (Cured, Eradicated), values(g.diseases))
-        @info "Game won"
+        @debug "Game won"
         return g.state = Won
     end
 
     # Cube state is not legal
     if !cubeslegal(g)
-        @info "Game lost; cubes illegal" g.cubes
+        @debug "Game lost; cubes illegal" g.cubes
         return g.state = Lost
     end
 
@@ -373,13 +373,13 @@ function checkstate!(g::Game)::GameState
     # TODO: is this the right way to do this condition?
     # should it be called on it's own?
     if length(g.drawpile) < PLAYER_DRAW
-        @info "Game lost; draw deck too small" g.drawpile threshold = PLAYER_DRAW
+        @debug "Game lost; draw deck too small" g.drawpile threshold = PLAYER_DRAW
         return g.state = Lost
     end
 
     # Outbreaks count is at or past limit
     if g.outbreaks >= MAX_OUTBREAKS
-        @info "Game lost; too many outbreaks" g.outbreaks MAX_OUTBREAKS
+        @debug "Game lost; too many outbreaks" g.outbreaks MAX_OUTBREAKS
         return g.state = Lost
     end
 
@@ -395,7 +395,7 @@ function cubeslegal(game::Game)::Bool
     legal = true
     for disease in instances(Disease)
         if cubesinplay(game, disease) >= CUBES_PER_DISEASE
-            @info "All cubes are in play, cube state is not legal" disease
+            @debug "All cubes are in play, cube state is not legal" disease
             legal = false
         end
     end

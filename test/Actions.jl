@@ -4,9 +4,14 @@ city1 = City("city1", Pandemic.Blue)
 city2 = City("city2", Pandemic.Black)
 city3 = City("city3", Pandemic.Blue)
 
-world1 = World(city1)
-addcity!(world1, city2, [city1])
-addcity!(world1, city3, [city2])
+world1 = begin
+    b = Pandemic.WorldBuilder()
+    b.start = 1
+    Pandemic.addcity!(b, city1)
+    Pandemic.addcity!(b, city2, [city1])
+    Pandemic.addcity!(b, city3, [city2])
+    Pandemic.finaliseworld(b)
+end
 
 game() = Game(
     world = deepcopy(world1),

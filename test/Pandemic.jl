@@ -1,13 +1,19 @@
 using Pandemic
 
-city1 = City("city1", Pandemic.Blue)
-city2 = City("city2", Pandemic.Black)
+world1 = begin
+    city1 = City("city1", Pandemic.Blue)
+    city2 = City("city2", Pandemic.Black)
 
-world1 = World(city1)
-addcity!(world1, city2, [city1])
+    b = Pandemic.WorldBuilder()
+    Pandemic.addcity!(b, city1)
+    println("$(city1.id)")
+    Pandemic.addcity!(b, city2, ["city1"])
+    b.start = 1
+    Pandemic.finaliseworld(b)
+end
 
 game() = Game(
-    world = deepcopy(world1),
+    world = world1,
     numplayers = 2,
     difficulty = Introductory,
 )
