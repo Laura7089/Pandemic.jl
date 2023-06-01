@@ -8,11 +8,16 @@ Unless otherwise specified, the functions in this module ***do not*** check if:
 - the player has enough actions remaining to perform the action
 - the correct player's turn is currently in progress
 - the game has ended
+
+Functions also ***do not*** call [`advanceaction!`](@ref) when they are finished.
+
+These responsibilities are placed upon the caller.
 """
 module Actions
 
 # TODO: tests
 # TODO: @debug and other logging
+# TODO: fix mixed underscores/no underscores
 
 using Match
 using Pandemic:
@@ -24,7 +29,8 @@ using Pandemic:
     getcity,
     discard!,
     cityindex,
-    assert
+    assert,
+    ACTIONS_PER_TURN
 using Graphs
 
 """
@@ -235,6 +241,44 @@ function _findcure!(g::Game, p, d::Disease, cards)
         # Find and delete the card from the player's hand
         i = findfirst(==(card), g.hands[p])
         discard!(g, p, i)
+    end
+end
+
+"""
+    pass!(game)
+
+Take a "pass" action.
+
+This is a noop.
+"""
+function pass!(g::Game)
+    nothing
+end
+
+"""
+    advanceaction!(game)
+
+Decrements the `game.actionsleft` and changes turn if necessary.
+
+Left half of return indicates if `game.playerturn` was incremented, right if `game.round` was incremented.
+"""
+function advanceaction!(g::Game)::Tuple{bool, bool}
+    # TODO: test me
+    if game.actionsleft == 1
+        game.actionsleft = ACTIONS_PER_TURN
+
+        # TODO: is the +1 correct?
+        if game.playerturn == game.numplayers + 1
+            game.playerturn = 1
+            game.round += 1
+            return (true, true)
+        else
+            game.playerturn += 1
+            return (true, false)
+        end
+    else
+        game.actionsleft -= 1
+        return (false, false)
     end
 end
 

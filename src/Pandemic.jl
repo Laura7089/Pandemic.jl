@@ -95,6 +95,8 @@ See also [`newgame`](@ref), [`setupgame!`](@ref).
     difficulty::Difficulty
     numplayers::Int
 
+    # TODO: it might be worth replacing this with Xoshiro for performance
+    # (according to the Random docs)
     rng::R = MersenneTwister()
 
     # Map objects
@@ -116,6 +118,7 @@ See also [`newgame`](@ref), [`setupgame!`](@ref).
     outbreaks::Int = 0
 
     playerturn::Int = 1
+    actionsleft::Int = ACTIONS_PER_TURN
     round::Int = 1
     state::GameState = Playing
 end

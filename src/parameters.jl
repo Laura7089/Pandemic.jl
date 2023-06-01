@@ -40,6 +40,7 @@ const global INFECTION_RATES = [2, 2, 2, 3, 3, 4, 4]
 const global INITIAL_INFECTIONS = [(3, 3), (3, 2), (3, 1)]
 const global CARDS_TO_CURE = 5
 const global MAX_HAND = 7
+const global ACTIONS_PER_TURN = 4
 """
     PLAYER_DRAW
 
