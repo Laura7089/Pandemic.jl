@@ -275,7 +275,7 @@ Decrements the `game.actionsleft` and changes turn if necessary.
 
 Left half of return indicates if `game.playerturn` was incremented, right if `game.round` was incremented.
 """
-function advanceaction!(g::Game)::Tuple{bool, bool}
+function advanceaction!(g::Game)::Tuple{Bool, Bool}
     # TODO: test me
     if game.actionsleft == 1
         game.actionsleft = ACTIONS_PER_TURN
