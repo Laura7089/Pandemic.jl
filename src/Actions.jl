@@ -277,20 +277,20 @@ Left half of return indicates if `game.playerturn` was incremented, right if `ga
 """
 function advanceaction!(g::Game)::Tuple{Bool, Bool}
     # TODO: test me
-    if game.actionsleft == 1
-        game.actionsleft = ACTIONS_PER_TURN
+    if g.actionsleft == 1
+        g.actionsleft = ACTIONS_PER_TURN
 
         # TODO: is the +1 correct?
-        if game.playerturn == game.numplayers + 1
-            game.playerturn = 1
-            game.round += 1
+        if g.playerturn == game.numplayers + 1
+            g.playerturn = 1
+            g.round += 1
             return (true, true)
         else
-            game.playerturn += 1
+            g.playerturn += 1
             return (true, false)
         end
     else
-        game.actionsleft -= 1
+        g.actionsleft -= 1
         return (false, false)
     end
 end
