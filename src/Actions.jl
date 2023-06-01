@@ -53,6 +53,19 @@ end
 export move_one!
 
 """
+    move_one_unchecked!(game, player, city)
+
+Perform a regular move for `player` to `city`.
+
+Does **not** check if this move is legal.
+"""
+function move_one_unchecked!(g::Game, p, dest)
+    source = g.playerlocs[p]
+    dest, destc = getcity(g.world, dest)
+    g.playerlocs[p] = dest
+end
+
+"""
     move_direct!(game, player, city)
 
 Perform a "direct flight" move for `player` to `city`.

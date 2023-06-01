@@ -42,7 +42,7 @@ The default map layout of the official Pandemic board game, representing all of 
 """
 function vanillamap()::World
     # Disable logs since we know this map is ok
-    with_logger(NullLogger) do
+    with_logger(NullLogger()) do
         World([
             # Blue
             # North America
