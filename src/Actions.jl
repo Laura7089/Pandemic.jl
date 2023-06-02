@@ -280,8 +280,7 @@ function advanceaction!(g::Game)::Tuple{Bool, Bool}
     if g.actionsleft == 1
         g.actionsleft = ACTIONS_PER_TURN
 
-        # TODO: is the +1 correct?
-        if g.playerturn == g.numplayers + 1
+        if g.playerturn == g.numplayers
             g.playerturn = 1
             g.round += 1
             return (true, true)
