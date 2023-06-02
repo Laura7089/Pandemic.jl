@@ -9,3 +9,6 @@ interactive:
 # Format all files in `target`
 format target=SRC_DIR:
     {{ JULIA }} -E 'using JuliaFormatter; format("{{ target }}")'
+
+test:
+    {{ JULIA }} --project -E "using Pkg; Pkg.test()"

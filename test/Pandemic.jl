@@ -6,7 +6,6 @@ world1 = begin
 
     b = Pandemic.WorldBuilder()
     Pandemic.addcity!(b, city1)
-    println("$(city1.id)")
     Pandemic.addcity!(b, city2, ["city1"])
     b.start = 1
     Pandemic.finaliseworld(b)
