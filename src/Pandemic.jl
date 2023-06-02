@@ -315,7 +315,7 @@ If `colour == nothing` then the default colour of `city` will be used.
 Trigger an outbreak iff `city` has [`MAX_CUBES_PER_CITY`](@ref) cubes before infection.
 Pass `outbreakignore = [..]` to whitelist given cities from outbreaks resulting from this infection.
 """
-function infectcity!(g::Game, city; colour = nothing, outbreakignore = [])
+function infectcity!(g::Game, city; colour = nothing, outbreakignore = Int64[])
     c, city = getcity(g.world, city)
     colour = colour == nothing ? city.colour : colour
     @debug "Infecting city" city disease = colour
