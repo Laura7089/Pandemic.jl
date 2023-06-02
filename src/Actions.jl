@@ -20,6 +20,7 @@ module Actions
 # TODO: fix mixed underscores/no underscores
 
 using Match
+# TODO: why on earth is this like this
 using Pandemic:
     stationcount,
     MAX_STATIONS,
@@ -30,7 +31,10 @@ using Pandemic:
     discard!,
     cityindex,
     assert,
-    ACTIONS_PER_TURN
+    ACTIONS_PER_TURN,
+    cubesinplay,
+    Eradicated,
+    Cured
 using Graphs
 
 """
@@ -129,12 +133,16 @@ Build a research station in `city` with the relevant card from `player`.
 If there are already [`MAX_STATIONS`](@ref) in the game, `move_from` will determine which city loses a station to build this one.
 Throws errors if:
 
-- `player` isn't in the right city
+- `player` isn't in `city`
 - `player` doesn't have the relevant card
 - [`MAX_STATIONS`](@ref) are in play and `move_from` is not passed
+- there is already a station in `city`
 """
 function buildstation!(g::Game, p, city, move_from = nothing)
     c, city = getcity(g.world, city)
+    if g.stations[c]
+        throw(error("$city already has a research station"))
+    end
 
     assert(g.playerlocs[p] == c, "Player $p is not in $city")
 
@@ -151,7 +159,7 @@ function buildstation!(g::Game, p, city, move_from = nothing)
     handi = findfirst(==(c), g.hands[p])
     # no need to assert since `discard` will error if they don't have the card
     discard!(g, p, handi)
-    g.stations[city] = true
+    g.stations[c] = true
 end
 export buildstation!
 
@@ -244,7 +252,7 @@ function _findcure!(g::Game, p, d::Disease, cards)
     # We know `cards` is entirely valid at this point
     assert(g.stations[g.playerlocs[p]], "No station at player's location")
 
-    g.diseases[d] = if cubesinplay(g, d) == 0
+    g.diseases[Int(d)] = if cubesinplay(g, d) == 0
         Eradicated
     else
         Cured
