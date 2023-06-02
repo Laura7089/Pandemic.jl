@@ -281,7 +281,7 @@ function advanceaction!(g::Game)::Tuple{Bool, Bool}
         g.actionsleft = ACTIONS_PER_TURN
 
         # TODO: is the +1 correct?
-        if g.playerturn == game.numplayers + 1
+        if g.playerturn == g.numplayers + 1
             g.playerturn = 1
             g.round += 1
             return (true, true)
