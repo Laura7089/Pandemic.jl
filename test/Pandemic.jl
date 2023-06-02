@@ -31,20 +31,20 @@ end
 @testset "checkstate" begin
     game = testgame()
     game.cubes = [Pandemic.CUBES_PER_DISEASE 0 0 0; 0 0 0 0]
-    @test Pandemic.checkstate!(game) == Pandemic.Lost
+    @test Pandemic.checkstate(game) == Pandemic.Lost
 
     game = testgame()
     game.outbreaks = Pandemic.MAX_OUTBREAKS
-    @test Pandemic.checkstate!(game) == Pandemic.Lost
+    @test Pandemic.checkstate(game) == Pandemic.Lost
 
     game = testgame()
     game.outbreaks = Pandemic.MAX_OUTBREAKS - 1
     game.drawpile = collect(1:20)
-    @test Pandemic.checkstate!(game) == Pandemic.Playing
+    @test Pandemic.checkstate(game) == Pandemic.Playing
 
     game = testgame()
     game.diseases = [Pandemic.Cured for _ in instances(Pandemic.Disease)]
-    @test Pandemic.checkstate!(game) == Pandemic.Won
+    @test Pandemic.checkstate(game) == Pandemic.Won
 end
 
 @testset "infectcity!" begin

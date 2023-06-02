@@ -166,10 +166,9 @@ function setupgame!(game::Game)::Game
     end
     assert(length(playercards) == 0) # Make sure we used up all the player cards
 
-    state = checkstate!(game)
+    state = checkstate(game)
     if state != Playing
-        @warn "Bad state after init, setting back to Playing" state
-        game.state = Playing
+        @warn "Bad state after init, ignoring" state
     end
 
     if isempty(game.infectiondeck)
@@ -349,13 +348,13 @@ function outbreak!(g::Game, city, ignore::Vector{Int})
 end
 
 """
-    checkstate!(game)
+    checkstate(game)
 
 Check if `game` is won, lost or still in progress.
 
-Updates `game.state` if it has changed.
+See also [`checkstateandupdate!`](@ref).
 """
-function checkstate!(g::Game)::GameState
+function checkstate(g::Game)::GameState
     # Game is already over
     if g.state != Playing
         @debug "Game already ended"
@@ -365,13 +364,13 @@ function checkstate!(g::Game)::GameState
     # All cures have been found
     if all(x -> x in (Cured, Eradicated), values(g.diseases))
         @debug "Game won"
-        return g.state = Won
+        return Won
     end
 
     # Cube state is not legal
     if !cubeslegal(g)
         @debug "Game lost; cubes illegal" g.cubes
-        return g.state = Lost
+        return Lost
     end
 
     # Draw deck is too low
@@ -379,16 +378,29 @@ function checkstate!(g::Game)::GameState
     # should it be called on it's own?
     if length(g.drawpile) < PLAYER_DRAW
         @debug "Game lost; draw deck too small" g.drawpile threshold = PLAYER_DRAW
-        return g.state = Lost
+        return Lost
     end
 
     # Outbreaks count is at or past limit
     if g.outbreaks >= MAX_OUTBREAKS
         @debug "Game lost; too many outbreaks" g.outbreaks MAX_OUTBREAKS
-        return g.state = Lost
+        return Lost
     end
 
     return Playing
+end
+
+"""
+    checkstateandupdate!(game)
+
+Check if `game` is won, lost or still in progress.
+
+Updates `game.state` if it has changed.
+
+See also [`checkstate`](@ref).
+"""
+function checkstateandupdate!(g::Game)::GameState
+    return g.state = checkstate(g)
 end
 
 """
@@ -467,7 +479,7 @@ using PrecompileTools
 @compile_workload begin
     map = Pandemic.Maps.circle12()
     g = Pandemic.newgame(map, Pandemic.Introductory, 4)
-    checkstate!(g)
+    checkstateandupdate!(g)
 end
 
 end
