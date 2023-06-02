@@ -148,7 +148,7 @@ function buildstation!(g::Game, p, city, move_from = nothing)
         g.stations[move_from] = false
     end
 
-    handi = findfirst(==(c), g.hands[player])
+    handi = findfirst(==(c), g.hands[p])
     # no need to assert since `discard` will error if they don't have the card
     discard!(g, p, handi)
     g.stations[city] = true
