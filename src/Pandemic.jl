@@ -235,9 +235,10 @@ function drawcards!(game::Game, p, predicate)
         end
     end
 end
-function drawcards!(game::Game)
-    drawcards!(game, g -> g.hands[g.playerturn][MAX_HAND+1:end])
+function drawcards!(game::Game, p)
+    drawcards!(game, p, g -> g.hands[g.playerturn][MAX_HAND+1:end])
 end
+export drawcards!
 
 """
     epidemic!(game[, city])
@@ -298,8 +299,11 @@ Draw the appropriate amount of infection cards and call [`infectcity!`](@ref) wi
 """
 function infectcities!(game::Game)
     drawninfections = popmany!(game.infectiondeck, INFECTION_RATES[game.infectionrateindex])
-    infectcity!.(Ref(game), drawinfections)
+    for city in drawninfections
+        infectcity!(game, city)
+    end
 end
+export infectcities!
 
 """
     infectcity!(game, city[, colour][, outbreakignore])
@@ -310,7 +314,7 @@ If `colour == nothing` then the default colour of `city` will be used.
 Trigger an outbreak iff `city` has [`MAX_CUBES_PER_CITY`](@ref) cubes before infection.
 Pass `outbreakignore = [..]` to whitelist given cities from outbreaks resulting from this infection.
 """
-function infectcity!(g::Game, city, colour = nothing, outbreakignore::Vector{Int} = [])
+function infectcity!(g::Game, city; colour = nothing, outbreakignore = [])
     c, city = getcity(g.world, city)
     colour = colour == nothing ? city.colour : colour
     @debug "Infecting city" city disease = colour

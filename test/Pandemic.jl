@@ -44,3 +44,12 @@ end
     testgame.diseases = [Pandemic.Cured for _ in instances(Pandemic.Disease)]
     @test Pandemic.checkstate!(testgame) == Pandemic.Won
 end
+
+@testset "infectcity!" begin
+    begin
+        testgame = game()
+        Pandemic.infectcity!(testgame, city1)
+    end
+
+    # TODO: *way* more different scenarios need testing for this
+end
