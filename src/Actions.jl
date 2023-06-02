@@ -199,7 +199,7 @@ function shareknowledge!(g::Game, p1, p2, city)
         "Players $p1 and $p2 are not in '$city'",
     )
 
-    handi = findfirst(==(card), g.hands[p1])
+    handi = findfirst(==(c), g.hands[p1])
     # no need to assert, `popat!` will throw an error if `handi == nothing`
     push!(g.hands[p2], popat!(g.hands[p1], handi))
 end
