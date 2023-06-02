@@ -121,7 +121,6 @@ See also [`newgame`](@ref), [`setupgame!`](@ref).
     playerturn::Int = 1
     actionsleft::Int = ACTIONS_PER_TURN
     round::Int = 1
-    state::GameState = Playing
 end
 export Game
 
@@ -351,16 +350,8 @@ end
     checkstate(game)
 
 Check if `game` is won, lost or still in progress.
-
-See also [`checkstateandupdate!`](@ref).
 """
 function checkstate(g::Game)::GameState
-    # Game is already over
-    if g.state != Playing
-        @debug "Game already ended"
-        return g.state
-    end
-
     # All cures have been found
     if all(x -> x in (Cured, Eradicated), values(g.diseases))
         @debug "Game won"
@@ -388,19 +379,6 @@ function checkstate(g::Game)::GameState
     end
 
     return Playing
-end
-
-"""
-    checkstateandupdate!(game)
-
-Check if `game` is won, lost or still in progress.
-
-Updates `game.state` if it has changed.
-
-See also [`checkstate`](@ref).
-"""
-function checkstateandupdate!(g::Game)::GameState
-    return g.state = checkstate(g)
 end
 
 """
@@ -479,7 +457,7 @@ using PrecompileTools
 @compile_workload begin
     map = Pandemic.Maps.circle12()
     g = Pandemic.newgame(map, Pandemic.Introductory, 4)
-    checkstateandupdate!(g)
+    checkstate(g)
 end
 
 end
