@@ -204,14 +204,18 @@ This collection must have at least as many cards as have to be discarded.
 If the player's hand doesn't exceed `MAX_HAND`, `predicate` will not be called.
 
 If called without `predicate`, the last cards in the hand will be discarded, ie. most recently-drawn cards are prioritised for discard.
+
+Pass the `rng` kwarg to override `game.rng`.
 """
-function drawcards!(game::Game, p, predicate)
+function drawcards!(game::Game, p, predicate; rng=nothing)
+    rng = isnothing(rng) ? game.rng : rng
+
     @debug "Drawing cards"
     drawn = collect(popmany!(game.drawpile, PLAYER_DRAW))
 
     # Resolve epidemics
     for _ in filter(x -> x == 0, drawn)
-        epidemic!(game)
+        epidemic!(game, rng=rng)
     end
 
     # Add cards to hand
@@ -236,8 +240,8 @@ function drawcards!(game::Game, p, predicate)
         end
     end
 end
-function drawcards!(game::Game, p)
-    drawcards!(game, p, g -> g.hands[g.playerturn][MAX_HAND+1:end])
+function drawcards!(game::Game, p; rng=nothing)
+    drawcards!(game, p, g -> g.hands[g.playerturn][MAX_HAND+1:end]; rng=rng)
 end
 export drawcards!
 
@@ -428,12 +432,16 @@ End the turn of the current player.
 Calls [`Pandemic.infectcities!`](@ref) and [`Pandemic.drawcards!`](@ref).
 The `discard` argument will be passed to `drawcards!`.
 Returns `true` if the "round" ticked over.
+
+Pass `rng` kwarg to override `game.rng`.
 """
-function endturn!(g::Game, discard=nothing)::Bool
+function endturn!(g::Game, discard=nothing; rng=nothing)::Bool
+    rng = isnothing(rng) ? g.rng : rng
+
     if isnothing(discard)
-        drawcards!(g, g.playerturn)
+        drawcards!(g, g.playerturn; rng=rng)
     else
-        drawcards!(g, g.playerturn, discard)
+        drawcards!(g, g.playerturn, discard; rng=rng)
     end
     infectcities!(g)
 
