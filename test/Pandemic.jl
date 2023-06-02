@@ -3,10 +3,12 @@ using Pandemic
 world1 = begin
     city1 = City("city1", Pandemic.Blue)
     city2 = City("city2", Pandemic.Black)
+    city3 = City("city3", Pandemic.Blue)
 
     b = Pandemic.WorldBuilder()
     Pandemic.addcity!(b, city1)
     Pandemic.addcity!(b, city2, ["city1"])
+    Pandemic.addcity!(b, city3, ["city1"])
     b.start = 1
     Pandemic.finaliseworld(b)
 end
@@ -55,4 +57,20 @@ end
 end
 
 @testset "epidemic!" begin
+    begin
+        game = testgame()
+        # Remove starting cubes from the board
+        game.cubes .= 0
+        c1 = cityindex(game.world, city1)
+        c2 = cityindex(game.world, city2)
+        c3 = cityindex(game.world, city3)
+        Pandemic.outbreak!(game, city2, Int64[])
+
+        # City 2 is the place where the outbreak occurred, so no additional cubes are placed
+        @test all(==(0), game.cubes[c2, :])
+        # City 3 is not connected to city 2
+        @test all(==(0), game.cubes[c3, :])
+        # City 1 should have been overflowed into and thus have one black cube
+        @test game.cubes[c1, :] == [1, 0, 0, 0]
+    end
 end

@@ -343,7 +343,7 @@ function outbreak!(g::Game, city, ignore::Vector{Int})
             @debug "Ignoring city in outbreak chain" source = city neighbour
         else
             # TODO: push `c` to `ignore` here?
-            infectcity!(g, neighbour, colour, ignore)
+            infectcity!(g, neighbour, colour=colour, outbreakignore=ignore)
         end
     end
 end
