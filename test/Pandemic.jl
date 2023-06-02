@@ -53,3 +53,6 @@ end
 
     # TODO: *way* more different scenarios need testing for this
 end
+
+@testset "epidemic!" begin
+end

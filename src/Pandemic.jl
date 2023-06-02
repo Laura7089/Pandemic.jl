@@ -266,7 +266,7 @@ function epidemic!(game::Game, city)
     @debug "Epidemic" city
 
     # Step 2
-    if game.cubes[c, city.colour] != 0
+    if game.cubes[c, Int(city.colour)] != 0
         outbreak!(game, c, [c])
     end
 
