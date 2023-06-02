@@ -10,5 +10,6 @@ interactive:
 format target=SRC_DIR:
     {{ JULIA }} -E 'using JuliaFormatter; format("{{ target }}")'
 
-test:
-    {{ JULIA }} --project -E "using Pkg; Pkg.test()"
+# Run unit tests
+test *args="":
+    {{ JULIA }} --project -e "using Pkg; Pkg.test(allow_reresolve=false, {{ args }})"
