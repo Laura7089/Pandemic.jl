@@ -129,21 +129,23 @@ export Game
 
 (Re-)Run setup on an existing [`Game`](@ref).
 
-If the game is already in an end state once this has finished, this function will emit a warning then set the state of the game back to `Playing` for setup convenience.
+Pass `rng` as a kwarg to override `game.rng`.
 
 See also [`newgame`](@ref).
 """
-function setupgame!(game::Game)::Game
+function setupgame!(game::Game; rng=nothing)::Game
+    rng = isnothing(rng) ? game.rng : rng
+
     @debug "Dealing hands"
     playercards = collect(1:length(game.world))
-    shuffle!(game.rng, playercards)
+    shuffle!(rng, playercards)
     handsize = STARTING_HAND_OFFSET - game.numplayers
     for p = 1:game.numplayers
         game.hands[p] = collect(popmany!(playercards, handsize))
     end
 
     @debug "Placing disease cubes"
-    shuffle!(game.rng, game.infectiondeck)
+    shuffle!(rng, game.infectiondeck)
     for (numcards, numcubes) in INITIAL_INFECTIONS
         for c in popmany!(game.infectiondeck, numcards)
             _, city = getcity(game.world, c)
@@ -160,7 +162,7 @@ function setupgame!(game::Game)::Game
         pile = collect(popmany!(playercards, subpilesize))
         push!(pile, 0)
         # TODO: faster to insert at a given point instead?
-        shuffle!(game.rng, pile)
+        shuffle!(rng, pile)
         game.drawpile = vcat(game.drawpile, pile)
     end
     assert(length(playercards) == 0) # Make sure we used up all the player cards
@@ -251,12 +253,14 @@ Perform an epidemic outbreak at `city`.
 5. Shuffle the infection discard pile and put it back on the draw pile
 
 If `city` isn't passed, pop the bottom card from the infection draw pile and trigger the epidemic there.
+
+Pass the `rng` kwarg to override `game.rng`.
 """
-function epidemic!(game::Game)
+function epidemic!(game::Game; rng=nothing)
     c = popat!(game.infectiondeck, 1) # "bottom" card
-    epidemic!(game, c)
+    epidemic!(game, c; rng=rng)
 end
-function epidemic!(game::Game, city)
+function epidemic!(game::Game, city; rng=nothing)
     # Step 1
     game.infectionrateindex += 1
 
@@ -275,7 +279,8 @@ function epidemic!(game::Game, city)
     push!(game.infectiondiscard, c)
 
     # Step 5
-    shuffle!(game.rng, game.infectiondiscard)
+    rng = isnothing(rng) ? game.rng : rng
+    shuffle!(rng, game.infectiondiscard)
     game.infectiondeck = vcat(game.infectiondeck, game.infectiondiscard)
     game.infectiondiscard = []
 end
