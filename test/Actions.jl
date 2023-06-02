@@ -122,21 +122,24 @@ end
     end
 end
 
+@testset "advanceaction!" begin
+    # Do nothing for a whole turn
+    begin
+        testgame = game()
+        precubes = sum(testgame.cubes)
+        for _ in 1:Pandemic.ACTIONS_PER_TURN
+            advanceaction!(testgame)
+        end
+        @test testgame.playerturn == 2
+        @test sum(testgame.cubes) == precubes + Pandemic.INFECTION_RATES[1]
+    end
+end
+
 @testset "shareknowledge!" begin
 end
 @testset "treatdisease!" begin
 end
 @testset "advanceaction!" begin
 end
-@testset "advanceactionfull!" begin
-    # Do nothing for a whole turn
-    begin
-        testgame = game()
-        precubes = sum(testgame.cubes)
-        for _ in 1:Pandemic.ACTIONS_PER_TURN
-            advanceactionfull!(testgame)
-        end
-        @test testgame.playerturn == 2
-        @test sum(testgame.cubes) == precubes + Pandemic.INFECTION_RATES[1]
-    end
+@testset "endturn!" begin
 end

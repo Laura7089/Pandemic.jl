@@ -19,24 +19,10 @@ module Actions
 # TODO: @debug and other logging
 # TODO: fix mixed underscores/no underscores
 
+using Pandemic
+import Pandemic: assert, discard!, Eradicated, Cured
+
 using Match
-# TODO: why on earth is this like this
-using Pandemic:
-    stationcount,
-    MAX_STATIONS,
-    Game,
-    Disease,
-    CARDS_TO_CURE,
-    getcity,
-    discard!,
-    cityindex,
-    assert,
-    ACTIONS_PER_TURN,
-    cubesinplay,
-    Eradicated,
-    Cured,
-    drawcards!,
-    infectcities!
 using Graphs
 
 """
@@ -132,12 +118,12 @@ export move_station!
 
 Build a research station in `city` with the relevant card from `player`.
 
-If there are already [`MAX_STATIONS`](@ref) in the game, `move_from` will determine which city loses a station to build this one.
+If there are already [`Pandemic.MAX_STATIONS`](@ref) in the game, `move_from` will determine which city loses a station to build this one.
 Throws errors if:
 
 - `player` isn't in `city`
 - `player` doesn't have the relevant card
-- [`MAX_STATIONS`](@ref) are in play and `move_from` is not passed
+- [`Pandemic.MAX_STATIONS`](@ref) are in play and `move_from` is not passed
 - there is already a station in `city`
 """
 function buildstation!(g::Game, p, city, move_from = nothing)
@@ -148,10 +134,10 @@ function buildstation!(g::Game, p, city, move_from = nothing)
 
     assert(g.playerlocs[p] == c, "Player $p is not in $city")
 
-    if stationcount(g) == MAX_STATIONS
+    if Pandemic.stationcount(g) == Pandemic.MAX_STATIONS
         assert(
             move_from != nothing,
-            "Max stations reached ($MAX_STATIONS) but move_from is empty!",
+            "Max stations reached ($Pandemic.MAX_STATIONS) but move_from is empty!",
         )
 
         move_from = cityindex(g.world, move_from)
@@ -230,13 +216,13 @@ Throws an error if:
 function findcure!(g::Game, p, d::Disease)
     eligiblecards = filter(x -> g.world.cities[x].colour == d, g.hands[p])
     assert(
-        length(eligiblecards) >= CARDS_TO_CURE,
+        length(eligiblecards) >= Pandemic.CARDS_TO_CURE,
         "Player $p does not have enough $d cards",
     )
     _findcure!(g, p, d, eligiblecards[begin:5])
 end
 function findcure!(g::Game, p, d::Disease, cards)
-    assert(length(cards) == CARDS_TO_CURE)
+    assert(length(cards) == Pandemic.CARDS_TO_CURE)
     assert(all(c -> g.world.cities[c].colour == d, cards), "Card colours differ")
     assert(cards ⊆ g.hands[p], "Player does not have the requested cards")
     _findcure!(g, p, d, cards)
@@ -254,7 +240,7 @@ function _findcure!(g::Game, p, d::Disease, cards)
     # We know `cards` is entirely valid at this point
     assert(g.stations[g.playerlocs[p]], "No station at player's location")
 
-    g.diseases[Int(d)] = if cubesinplay(g, d) == 0
+    g.diseases[Int(d)] = if Pandemic.cubesinplay(g, d) == 0
         Eradicated
     else
         Cured
@@ -284,57 +270,22 @@ end
 Decrements `game.actionsleft` and changes turn if necessary.
 
 Left half of return indicates if `game.playerturn` was incremented, right if `game.round` was incremented.
+Calls [`Pandemic.endturn!`](@ref) if the turn was ended.
 """
-function advanceaction!(g::Game)::Tuple{Bool, Bool}
+function advanceaction!(g::Game, discard=nothing)::Tuple{Bool, Bool}
     # TODO: test me
     if g.actionsleft == 1
-        g.actionsleft = ACTIONS_PER_TURN
-
-        if g.playerturn == g.numplayers
-            g.playerturn = 1
-            g.round += 1
-            return (true, true)
+        roundtick = if isnothing(discard)
+            Pandemic.endturn!(g)
         else
-            g.playerturn += 1
-            return (true, false)
+            Pandemic.endturn!(g, discard)
         end
+        return (true, roundtick)
     else
         g.actionsleft -= 1
         return (false, false)
     end
 end
 export advanceaction!
-
-# TODO: merge with advanceaction! somehow...
-"""
-    advanceactionfull!(game)
-
-As with [`advanceaction!`](@ref), but also resolve end-of-turn stuff.
-"""
-function advanceactionfull!(g::Game, discard=nothing)::Tuple{Bool, Bool}
-    # TODO: test me
-    if g.actionsleft == 1
-        if isnothing(discard)
-            drawcards!(g, g.playerturn)
-        else
-            drawcards!(g, g.playerturn, discard)
-        end
-        infectcities!(g)
-
-        g.actionsleft = ACTIONS_PER_TURN
-        if g.playerturn == g.numplayers
-            g.playerturn = 1
-            g.round += 1
-            return (true, true)
-        else
-            g.playerturn += 1
-            return (true, false)
-        end
-    else
-        g.actionsleft -= 1
-        return (false, false)
-    end
-end
-export advanceactionfull!
 
 end

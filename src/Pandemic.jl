@@ -53,6 +53,7 @@ function Disease(s::AbstractString)::Disease
     throw(error("Disease '$s' not found"))
 end
 Disease(d::Disease) = d
+export Disease
 
 """
     DiseaseState
@@ -423,6 +424,35 @@ Count the number of cubes of `colour` in play.
 function cubesinplay(game::Game, d::Disease)::Int
     game.cubes[:, Int(d)] |> sum
 end
+
+"""
+    endturn!(game[, discard])
+
+End the turn of the current player.
+
+Calls [`Pandemic.infectcities!`](@ref) and [`Pandemic.drawcards!`](@ref).
+The `discard` argument will be passed to `drawcards!`.
+Returns `true` if the "round" ticked over.
+"""
+function endturn!(g::Game, discard=nothing)::Bool
+    if isnothing(discard)
+        drawcards!(g, g.playerturn)
+    else
+        drawcards!(g, g.playerturn, discard)
+    end
+    infectcities!(g)
+
+    g.actionsleft = ACTIONS_PER_TURN
+    if g.playerturn == g.numplayers
+        g.playerturn = 1
+        g.round += 1
+        return true
+    else
+        g.playerturn += 1
+        return false
+    end
+end
+export endturn!
 
 include("./Actions.jl")
 export Actions
