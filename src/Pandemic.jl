@@ -208,14 +208,12 @@ If called without `predicate`, the last cards in the hand will be discarded, ie.
 Pass the `rng` kwarg to override `game.rng`.
 """
 function drawcards!(game::Game, p, predicate; rng=nothing)
-    rng = isnothing(rng) ? game.rng : rng
-
     @debug "Drawing cards"
     drawn = collect(popmany!(game.drawpile, PLAYER_DRAW))
 
     # Resolve epidemics
     for _ in filter(x -> x == 0, drawn)
-        epidemic!(game, rng=rng)
+        epidemic!(game; rng=rng)
     end
 
     # Add cards to hand
@@ -436,8 +434,6 @@ Returns `true` if the "round" ticked over.
 Pass `rng` kwarg to override `game.rng`.
 """
 function endturn!(g::Game, discard=nothing; rng=nothing)::Bool
-    rng = isnothing(rng) ? g.rng : rng
-
     if isnothing(discard)
         drawcards!(g, g.playerturn; rng=rng)
     else
