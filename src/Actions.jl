@@ -34,7 +34,9 @@ using Pandemic:
     ACTIONS_PER_TURN,
     cubesinplay,
     Eradicated,
-    Cured
+    Cured,
+    drawcards!,
+    infectcities!
 using Graphs
 
 """
@@ -279,7 +281,7 @@ end
 """
     advanceaction!(game)
 
-Decrements the `game.actionsleft` and changes turn if necessary.
+Decrements `game.actionsleft` and changes turn if necessary.
 
 Left half of return indicates if `game.playerturn` was incremented, right if `game.round` was incremented.
 """
@@ -301,5 +303,38 @@ function advanceaction!(g::Game)::Tuple{Bool, Bool}
         return (false, false)
     end
 end
+export advanceaction!
+
+# TODO: merge with advanceaction! somehow...
+"""
+    advanceactionfull!(game)
+
+As with [`advanceaction!`](@ref), but also resolve end-of-turn stuff.
+"""
+function advanceactionfull!(g::Game, discard=nothing)::Tuple{Bool, Bool}
+    # TODO: test me
+    if g.actionsleft == 1
+        if isnothing(discard)
+            drawcards!(g, g.playerturn)
+        else
+            drawcards!(g, g.playerturn, discard)
+        end
+        infectcities!(g)
+
+        g.actionsleft = ACTIONS_PER_TURN
+        if g.playerturn == g.numplayers
+            g.playerturn = 1
+            g.round += 1
+            return (true, true)
+        else
+            g.playerturn += 1
+            return (true, false)
+        end
+    else
+        g.actionsleft -= 1
+        return (false, false)
+    end
+end
+export advanceactionfull!
 
 end
