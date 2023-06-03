@@ -229,8 +229,8 @@ function drawcards!(game::Game, p, predicate; rng=nothing)
 
         discard = Iterators.take(predicate(game), numtodiscard)
         assert(
-            length(discard) < numtodiscard,
-            "Predicate didn't return enough cards to discard",
+            length(discard) == numtodiscard,
+            "Predicate returned $(length(discard)) to return, needed $numtodiscard",
         )
         for c in discard
             i = findfirst(==(c), game.hands[game.playerturn])
