@@ -15,8 +15,10 @@ end
 
 testgame() = Game(
     world = world1,
-    numplayers = 2,
-    difficulty = Introductory,
+    settings = Pandemic.Settings(
+        num_players = 2,
+        difficulty = Introductory,
+    ),
 )
 
 @testset "cubesinplay" begin
@@ -30,15 +32,15 @@ end
 
 @testset "checkstate" begin
     game = testgame()
-    game.cubes = [Pandemic.CUBES_PER_DISEASE 0 0 0; 0 0 0 0]
+    game.cubes = [game.settings.cubes_per_disease 0 0 0; 0 0 0 0]
     @test Pandemic.checkstate(game) == Pandemic.Lost
 
     game = testgame()
-    game.outbreaks = Pandemic.MAX_OUTBREAKS
+    game.outbreaks = game.settings.max_outbreaks
     @test Pandemic.checkstate(game) == Pandemic.Lost
 
     game = testgame()
-    game.outbreaks = Pandemic.MAX_OUTBREAKS - 1
+    game.outbreaks = game.settings.max_outbreaks - 1
     game.drawpile = collect(1:20)
     @test Pandemic.checkstate(game) == Pandemic.Playing
 

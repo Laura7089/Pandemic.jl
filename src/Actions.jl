@@ -118,12 +118,12 @@ export move_station!
 
 Build a research station in `city` with the relevant card from `player`.
 
-If there are already [`Pandemic.MAX_STATIONS`](@ref) in the game, `move_from` will determine which city loses a station to build this one.
+If there are already `game.settings.max_stations` in the game, `move_from` will determine which city loses a station to build this one.
 Throws errors if:
 
 - `player` isn't in `city`
 - `player` doesn't have the relevant card
-- [`Pandemic.MAX_STATIONS`](@ref) are in play and `move_from` is not passed
+- `game.settings.max_stations` are in play and `move_from` is not passed
 - there is already a station in `city`
 """
 function buildstation!(g::Game, p, city, move_from = nothing)
@@ -134,10 +134,10 @@ function buildstation!(g::Game, p, city, move_from = nothing)
 
     assert(g.playerlocs[p] == c, "Player $p is not in $city")
 
-    if Pandemic.stationcount(g) == Pandemic.MAX_STATIONS
+    if Pandemic.stationcount(g) == g.settings.max_stations
         assert(
             move_from != nothing,
-            "Max stations reached ($Pandemic.MAX_STATIONS) but move_from is empty!",
+            "Max stations reached ($(g.settings.max_stations)) but move_from is empty!",
         )
 
         move_from = cityindex(g.world, move_from)
@@ -216,13 +216,13 @@ Throws an error if:
 function findcure!(g::Game, p, d::Disease)
     eligiblecards = filter(x -> g.world.cities[x].colour == d, g.hands[p])
     assert(
-        length(eligiblecards) >= Pandemic.CARDS_TO_CURE,
+        length(eligiblecards) >= g.settings.cards_to_cure,
         "Player $p does not have enough $d cards",
     )
     _findcure!(g, p, d, eligiblecards[begin:5])
 end
 function findcure!(g::Game, p, d::Disease, cards)
-    assert(length(cards) == Pandemic.CARDS_TO_CURE)
+    assert(length(cards) == g.settings.cards_to_cure)
     assert(all(c -> g.world.cities[c].colour == d, cards), "Card colours differ")
     assert(cards ⊆ g.hands[p], "Player does not have the requested cards")
     _findcure!(g, p, d, cards)

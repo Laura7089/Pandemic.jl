@@ -19,7 +19,7 @@ function assert(cond, errortext = "Assertion failed")
     end
 end
 
-include("./parameters.jl")
+include("./settings.jl")
 include("./world.jl")
 
 using Random
@@ -102,8 +102,7 @@ See also [`newgame`](@ref), [`setupgame!`](@ref).
 """
 @with_kw mutable struct Game{R<:AbstractRNG}
     world::World
-    difficulty::Difficulty
-    numplayers::Int
+    settings::Settings
 
     # TODO: it might be worth replacing this with Xoshiro for performance
     # (according to the Random docs)
@@ -112,10 +111,10 @@ See also [`newgame`](@ref), [`setupgame!`](@ref).
     # Map objects
     cubes::Matrix{Int} = zeros(Int, (length(world), length(instances(Disease))))
     stations::Vector{Bool} = [i == world.start for i = 1:length(world)]
-    playerlocs::Vector{Int} = [world.start for _ = 1:numplayers]
+    playerlocs::Vector{Int} = [world.start for _ = 1:settings.num_players]
 
     # Cards
-    hands::Vector{Vector{Int}} = [[] for _ = 1:numplayers]
+    hands::Vector{Vector{Int}} = [[] for _ = 1:settings.num_players]
     infectiondeck::Vector{Int} = collect(1:length(world))
     infectiondiscard::Vector{Int} = Int[]
     # NOTE: a 0 denotes an epidemic card
@@ -128,7 +127,7 @@ See also [`newgame`](@ref), [`setupgame!`](@ref).
     outbreaks::Int = 0
 
     playerturn::Int = 1
-    actionsleft::Int = ACTIONS_PER_TURN
+    actionsleft::Int = settings.actions_per_turn
     round::Int = 1
 end
 export Game
@@ -150,14 +149,14 @@ function setupgame!(game::Game; rng = nothing)::Game
     @debug "Dealing hands"
     playercards = collect(1:length(game.world))
     shuffle!(rng, playercards)
-    handsize = STARTING_HAND_OFFSET - game.numplayers
-    for p = 1:game.numplayers
+    handsize = game.settings.starting_hand
+    for p = 1:game.settings.num_players
         game.hands[p] = collect(popmany!(playercards, handsize))
     end
 
     @debug "Placing disease cubes"
     shuffle!(rng, game.infectiondeck)
-    for (numcards, numcubes) in INITIAL_INFECTIONS
+    for (numcards, numcubes) in game.settings.initial_infections
         for c in popmany!(game.infectiondeck, numcards)
             _, city = getcity(game.world, c)
             game.cubes[c, Int(city.colour)] += numcubes
@@ -167,7 +166,7 @@ function setupgame!(game::Game; rng = nothing)::Game
     assert(cubeslegal(game), "Too many cubes dealt out in setup")
 
     @debug "Preparing draw pile"
-    numpiles = Int(game.difficulty)
+    numpiles = Int(game.settings.difficulty)
     subpilesize = round(length(playercards) / numpiles, RoundUp) |> Int
     for _ = 1:numpiles
         pile = collect(popmany!(playercards, subpilesize))
@@ -190,14 +189,15 @@ function setupgame!(game::Game; rng = nothing)::Game
 end
 
 """
-    newgame(world, difficulty, numplayers[, rng])
+    newgame(world, settings[, rng])
 
 Create a new [`Game`](@ref) and set it up for the first turn.
 
+`settings` should be a [`Settings`](@ref) object.
 Effectively constructs a [`Game`](@ref) then calls [`Pandemic.setupgame!`](@ref) on it.
 """
-function newgame(world, difficulty, numplayers, rng = MersenneTwister())::Game
-    game = Game(world = world, difficulty = difficulty, numplayers = numplayers, rng = rng)
+function newgame(world, settings, rng = MersenneTwister())::Game
+    game = Game(world = world, settings = settings, rng = rng)
     setupgame!(game)
     return game
 end
@@ -216,13 +216,13 @@ export stations
 """
     drawcards!(game, player[, predicate])
 
-Draw [`PLAYER_DRAW`](@ref) cards and put them in `player`'s hand.
+Draw `game.settings.player_draw` cards and put them in `player`'s hand.
 
 Epidemics are handled if they're drawn.
 
 `predicate` is a callback function which takes `game` and returns a (priority-ordered) collection of cards to discard.
 This collection must have at least as many cards as have to be discarded.
-If the player's hand doesn't exceed `MAX_HAND`, `predicate` will not be called.
+If the player's hand doesn't exceed `game.settings.max_hand`, `predicate` will not be called.
 
 If called without `predicate`, the last cards in the hand will be discarded, ie. most recently-drawn cards are prioritised for discard.
 
@@ -230,7 +230,7 @@ Pass the `rng` kwarg to override `game.rng`.
 """
 function drawcards!(game::Game, p, predicate; rng = nothing)
     @debug "Drawing cards"
-    drawn = collect(popmany!(game.drawpile, PLAYER_DRAW))
+    drawn = collect(popmany!(game.drawpile, game.settings.player_draw))
 
     # Resolve epidemics
     for _ in filter(x -> x == 0, drawn)
@@ -244,9 +244,9 @@ function drawcards!(game::Game, p, predicate; rng = nothing)
 
     # Handle discards
     handsize = length(game.hands[game.playerturn])
-    if handsize > MAX_HAND
-        numtodiscard = handsize - MAX_HAND
-        @debug "Hand too big, discarding cards" game.playerturn handsize MAX_HAND
+    if handsize > game.settings.max_hand
+        numtodiscard = handsize - game.settings.max_hand
+        @debug "Hand too big, discarding cards" game.playerturn handsize game.settings.max_hand
 
         discard = Iterators.take(predicate(game), numtodiscard)
         assert(
@@ -260,7 +260,7 @@ function drawcards!(game::Game, p, predicate; rng = nothing)
     end
 end
 function drawcards!(game::Game, p; rng = nothing)
-    drawcards!(game, p, g -> g.hands[g.playerturn][MAX_HAND+1:end]; rng = rng)
+    drawcards!(game, p, g -> g.hands[g.playerturn][game.settings.max_hand+1:end]; rng = rng)
 end
 export drawcards!
 
@@ -271,7 +271,7 @@ Perform an epidemic outbreak at `city`.
 
 1. Increase infection rate (`game.infectionrateindex`)
 2. If there are any cubes in `city`, trigger an [`outbreak!`](@ref) there
-3. Set the cubes in `city` to [`MAX_CUBES_PER_CITY`](@ref)
+3. Set the cubes in `city` to `game.settings.max_cubes_per_city`
 4. Put `city` on the infection discard pile
 5. Shuffle the infection discard pile and put it back on the draw pile
 
@@ -297,7 +297,7 @@ function epidemic!(game::Game, city; rng = nothing)
     end
 
     # Step 3
-    game.cubes[c] = MAX_CUBES_PER_CITY
+    game.cubes[c] = game.settings.max_cubes_per_city
 
     # Step 4
     push!(game.infectiondiscard, c)
@@ -326,7 +326,7 @@ end
 Draw the appropriate amount of infection cards and call [`infectcity!`](@ref) with them.
 """
 function infectcities!(game::Game)
-    drawninfections = popmany!(game.infectiondeck, INFECTION_RATES[game.infectionrateindex])
+    drawninfections = popmany!(game.infectiondeck, game.settings.infection_rates[game.infectionrateindex])
     for city in drawninfections
         infectcity!(game, city)
     end
@@ -339,14 +339,14 @@ export infectcities!
 Infect `city` with one cube of `colour`.
 
 If `colour == nothing` then the default colour of `city` will be used.
-Trigger an outbreak iff `city` has [`MAX_CUBES_PER_CITY`](@ref) cubes before infection.
+Trigger an outbreak iff `city` has `game.settings.max_cubes_per_city` cubes before infection.
 Pass `outbreakignore = [..]` to whitelist given cities from outbreaks resulting from this infection.
 """
 function infectcity!(g::Game, city; colour = nothing, outbreakignore = Int64[])
     c, city = getcity(g.world, city)
     colour = colour == nothing ? city.colour : colour
     @debug "Infecting city" city disease = colour
-    if g.cubes[c, Int(colour)] == MAX_CUBES_PER_CITY
+    if g.cubes[c, Int(colour)] == g.settings.max_cubes_per_city
         outbreak!(g, c, vcat(outbreakignore, [c]))
     else
         g.cubes[c, Int(colour)] += 1
@@ -396,14 +396,14 @@ function checkstate(g::Game)::GameState
     # Draw deck is too low
     # TODO: is this the right way to do this condition?
     # should it be called on it's own?
-    if length(g.drawpile) < PLAYER_DRAW
-        @debug "Game lost; draw deck too small" g.drawpile threshold = PLAYER_DRAW
+    if length(g.drawpile) < g.settings.player_draw
+        @debug "Game lost; draw deck too small" g.drawpile threshold = g.settings.player_draw
         return Lost
     end
 
     # Outbreaks count is at or past limit
-    if g.outbreaks >= MAX_OUTBREAKS
-        @debug "Game lost; too many outbreaks" g.outbreaks MAX_OUTBREAKS
+    if g.outbreaks >= g.settings.max_outbreaks
+        @debug "Game lost; too many outbreaks" g.outbreaks g.settings.max_outbreaks
         return Lost
     end
 
@@ -418,7 +418,7 @@ Test that the cube totals in `game` are valid, returns `true` or `false`.
 function cubeslegal(game::Game)::Bool
     legal = true
     for disease in instances(Disease)
-        if cubesinplay(game, disease) >= CUBES_PER_DISEASE
+        if cubesinplay(game, disease) >= game.settings.cubes_per_disease
             @debug "All cubes are in play, cube state is not legal" disease
             legal = false
         end
@@ -464,8 +464,8 @@ function endturn!(g::Game, discard = nothing; rng = nothing)::Bool
     end
     infectcities!(g)
 
-    g.actionsleft = ACTIONS_PER_TURN
-    if g.playerturn == g.numplayers
+    g.actionsleft = g.settings.actions_per_turn
+    if g.playerturn == g.settings.num_players
         g.playerturn = 1
         g.round += 1
         return true
@@ -488,7 +488,8 @@ using PrecompileTools
 # Precompilation for speedup
 @compile_workload begin
     map = Pandemic.Maps.circle12()
-    g = Pandemic.newgame(map, Pandemic.Introductory, 4)
+    set = Settings(difficulty = Pandemic.Introductory, num_players = 4)
+    g = Pandemic.newgame(map, set)
     checkstate(g)
 end
 

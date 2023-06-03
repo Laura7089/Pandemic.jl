@@ -14,77 +14,79 @@ world1 = begin
     Pandemic.finaliseworld(b)
 end
 
-game() = Game(
+testgame() = Game(
     world = deepcopy(world1),
-    numplayers = 2,
-    difficulty = Introductory,
+    settings = Pandemic.Settings(
+        num_players = 2,
+        difficulty = Introductory,
+    ),
 )
 
 @testset "moving" begin
-    testgame = game()
-    move_one!(testgame, 1, city2)
-    @test testgame.playerlocs[1] == 2
-    @test_throws "" move_one!(testgame, 2, city3)
+    game = testgame()
+    move_one!(game, 1, city2)
+    @test game.playerlocs[1] == 2
+    @test_throws "" move_one!(game, 2, city3)
 
-    testgame = game()
-    push!(testgame.hands[1], 3)
-    move_direct!(testgame, 1, 3)
-    @test testgame.playerlocs[1] == 3 && testgame.hands[1] == []
-    @test_throws "" move_direct!(testgame, 2, 3)
+    game = testgame()
+    push!(game.hands[1], 3)
+    move_direct!(game, 1, 3)
+    @test game.playerlocs[1] == 3 && game.hands[1] == []
+    @test_throws "" move_direct!(game, 2, 3)
 
-    testgame = game()
-    push!(testgame.hands[1], 1)
-    move_chartered!(testgame, 1, 3)
-    @test testgame.playerlocs[1] == 3 && testgame.hands[1] == []
-    push!(testgame.hands[2], 2)
-    @test_throws "" move_chartered!(testgame, 2, 3)
+    game = testgame()
+    push!(game.hands[1], 1)
+    move_chartered!(game, 1, 3)
+    @test game.playerlocs[1] == 3 && game.hands[1] == []
+    push!(game.hands[2], 2)
+    @test_throws "" move_chartered!(game, 2, 3)
 
-    testgame = game()
-    testgame.stations[1] = testgame.stations[3] = true
-    move_station!(testgame, 1, 3)
-    @test testgame.playerlocs[1] == 3
-    testgame.playerlocs[2] = 2
-    @test_throws "" move_station!(testgame, 2, 3)
+    game = testgame()
+    game.stations[1] = game.stations[3] = true
+    move_station!(game, 1, 3)
+    @test game.playerlocs[1] == 3
+    game.playerlocs[2] = 2
+    @test_throws "" move_station!(game, 2, 3)
 end
 
 @testset "buildstation!" begin
     # Building station in a new city
     begin
-        testgame = game()
-        move_one!(testgame, 1, city2)
-        loc = testgame.playerlocs[1]
-        prehand = deepcopy(testgame.hands[1])
+        game = testgame()
+        move_one!(game, 1, city2)
+        loc = game.playerlocs[1]
+        prehand = deepcopy(game.hands[1])
         # Give the correct card to the player
-        append!(testgame.hands[1], loc)
+        append!(game.hands[1], loc)
 
-        buildstation!(testgame, 1, loc)
-        @test testgame.stations[loc]
-        @test Pandemic.stationcount(testgame) == 2
-        @test testgame.hands[1] == prehand
+        buildstation!(game, 1, loc)
+        @test game.stations[loc]
+        @test Pandemic.stationcount(game) == 2
+        @test game.hands[1] == prehand
     end
 
     # Building station in the starter city (it should already have one)
     begin
-        testgame = game()
-        loc = testgame.playerlocs[1]
+        game = testgame()
+        loc = game.playerlocs[1]
         # Give the correct card to the player
-        append!(testgame.hands[1], loc)
+        append!(game.hands[1], loc)
 
-        @test_throws "" buildstation!(testgame, 1, loc)
+        @test_throws "" buildstation!(game, 1, loc)
     end
 
     # Building station without the right card
     begin
-        testgame = game()
-        move_one!(testgame, 1, city2)
-        loc = testgame.playerlocs[1]
+        game = testgame()
+        move_one!(game, 1, city2)
+        loc = game.playerlocs[1]
         # Take away the card if the player has it
-        inhand = findfirst(==(loc), testgame.hands[1])
+        inhand = findfirst(==(loc), game.hands[1])
         if !isnothing(inhand)
-            popat!(testgame.hands[1], inhand)
+            popat!(game.hands[1], inhand)
         end
 
-        @test_throws "" buildstation!(testgame, 1, loc)
+        @test_throws "" buildstation!(game, 1, loc)
     end
 
     # TODO: test other error cases as well
@@ -93,45 +95,45 @@ end
 @testset "findcure!" begin
     # Ideal conditions
     begin
-        testgame = game()
+        game = testgame()
         # Give player only the needed cards to cure
-        c = Pandemic.cityindex(testgame.world, city1)
-        testgame.hands[1] = fill(c, Pandemic.CARDS_TO_CURE)
+        c = Pandemic.cityindex(game.world, city1)
+        game.hands[1] = fill(c, game.settings.cards_to_cure)
         # Push an unrelated card
-        c2 = Pandemic.cityindex(testgame.world, city2)
-        push!(testgame.hands[1], c2)
+        c2 = Pandemic.cityindex(game.world, city2)
+        push!(game.hands[1], c2)
         # Make sure there's at least one blue cube in play
-        testgame.cubes[c, Int(Pandemic.Blue)] += 1
+        game.cubes[c, Int(Pandemic.Blue)] += 1
 
-        findcure!(testgame, 1, Pandemic.Blue)
-        @test testgame.diseases[Int(Pandemic.Blue)] == Pandemic.Cured
-        @test testgame.hands[1] == [c2]
+        findcure!(game, 1, Pandemic.Blue)
+        @test game.diseases[Int(Pandemic.Blue)] == Pandemic.Cured
+        @test game.hands[1] == [c2]
     end
 
     # Too few cards, should throw
     begin
-        testgame = game()
+        game = testgame()
         # Give player too few cards to cure
-        c = Pandemic.cityindex(testgame.world, city1)
-        testgame.hands[1] = fill(c, Pandemic.CARDS_TO_CURE - 1)
-        prehand = deepcopy(testgame.hands[1])
+        c = Pandemic.cityindex(game.world, city1)
+        game.hands[1] = fill(c, game.settings.cards_to_cure - 1)
+        prehand = deepcopy(game.hands[1])
 
-        @test_throws "" findcure!(testgame, 1, Pandemic.Blue)
-        @test testgame.diseases[Int(Pandemic.Blue)] != Pandemic.Cured
-        @test testgame.hands[1] == prehand
+        @test_throws "" findcure!(game, 1, Pandemic.Blue)
+        @test game.diseases[Int(Pandemic.Blue)] != Pandemic.Cured
+        @test game.hands[1] == prehand
     end
 end
 
 @testset "advanceaction!" begin
     # Do nothing for a whole turn
     begin
-        testgame = game()
-        precubes = sum(testgame.cubes)
-        for _ in 1:Pandemic.ACTIONS_PER_TURN
-            advanceaction!(testgame)
+        game = testgame()
+        precubes = sum(game.cubes)
+        for _ in 1:game.settings.actions_per_turn
+            advanceaction!(game)
         end
-        @test testgame.playerturn == 2
-        @test sum(testgame.cubes) == precubes + Pandemic.INFECTION_RATES[1]
+        @test game.playerturn == 2
+        @test sum(game.cubes) == precubes + game.settings.infection_rates[1]
     end
 end
 
