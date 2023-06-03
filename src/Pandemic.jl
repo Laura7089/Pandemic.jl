@@ -143,9 +143,7 @@ Pass `rng` as a kwarg to override `game.rng`.
 
 See also [`newgame`](@ref).
 """
-function setupgame!(game::Game; rng = nothing)::Game
-    rng = isnothing(rng) ? game.rng : rng
-
+function setupgame!(game::Game; rng = game.rng)::Game
     @debug "Dealing hands"
     playercards = collect(1:length(game.world))
     shuffle!(rng, playercards)
@@ -279,12 +277,12 @@ If `city` isn't passed, pop the bottom card from the infection draw pile and tri
 
 Pass the `rng` kwarg to override `game.rng`.
 """
-function epidemic!(game::Game; rng = nothing)
+function epidemic!(game::Game; rng = game.rng)
     # TODO: what if the infection deck is empty?
     c = popat!(game.infectiondeck, 1) # "bottom" card
     epidemic!(game, c; rng = rng)
 end
-function epidemic!(game::Game, city; rng = nothing)
+function epidemic!(game::Game, city; rng = game.rng)
     # Step 1
     game.infectionrateindex += 1
 
@@ -303,7 +301,6 @@ function epidemic!(game::Game, city; rng = nothing)
     push!(game.infectiondiscard, c)
 
     # Step 5
-    rng = isnothing(rng) ? game.rng : rng
     shuffle!(rng, game.infectiondiscard)
     game.infectiondeck = vcat(game.infectiondeck, game.infectiondiscard)
     game.infectiondiscard = []
