@@ -183,3 +183,4 @@ function World(cities, start = 1)::World
     return finaliseworld(builder)
 end
 Graphs.neighbors(world::World, c) = Graphs.neighbors(world.graph, c)
+Graphs.neighbors(world::World, c::City) = Graphs.neighbors(world.graph, cityindex(world, c))
