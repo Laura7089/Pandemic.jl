@@ -441,6 +441,7 @@ Count the number of cubes of `colour` in play.
 function cubesinplay(game::Game, d::Disease)::Int
     game.cubes[:, Int(d)] |> sum
 end
+export cubesinplay
 
 """
     endturn!(game[, discard])

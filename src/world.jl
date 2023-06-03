@@ -81,6 +81,17 @@ end
 export getcity
 
 """
+    cityid(world, city)
+
+Get the id of a `city` in `world`.
+"""
+function cityid(world, city::City)
+    cityid(world, cityindex(world, city))
+end
+cityid(world, city::Int) = world.cities[city].id
+export cityid
+
+"""
     WorldBuilder
 
 Convenience struct to incrementally build a [`World`](@ref) (which is immutable).

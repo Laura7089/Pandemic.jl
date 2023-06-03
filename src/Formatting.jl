@@ -6,6 +6,7 @@ Human-readable string representations of various parts of the game.
 module Formatting
 
 using Pandemic
+using DataStructures: counter
 
 """
     citycubes(game, c[; reprs])
@@ -61,18 +62,14 @@ end
 Get a (multiline) [`String`](@ref) showing where each player is and a summary of their hand.
 """
 function players(game::Game)::String
-    function counthand(hand)
-        buckets = Dict([d => 0 for d in instances(Disease)])
-        for card in hand
-            buckets[game.world.cities[card].colour] += 1
-        end
-        filter!(p -> p.second > 0, buckets)
-        return join(buckets, ", ")
+    function ch(hand)
+        buckets = counter(map((c) -> game.world.cities[c].colour, hand))
+        return join((d for d in buckets if d.second > 0), ", ")
     end
-    city(p) = game.world.cities[game.playerlocs[p]].id
+    city(p) = cityid(game.world, game.playerlocs[p])
 
     join(
-        ("♟️ $p: $(city(p)), hand: $(counthand(game.hands[p]))" for p = 1:game.numplayers),
+        ("♟️ $p: $(city(p)), hand: $(ch(game.hands[p]))" for p = 1:game.numplayers),
         "\n",
     )
 end
@@ -83,20 +80,21 @@ end
 Get a simple human-readable summary of the state of `game`.
 """
 function summary(game::Game)::String
-    stationlocs = [getcity(game.world, c)[2].id for c in stations(game)]
-    state = Pandemic.checkstate(game)
+    stationlocs = [cityid(game.world, c) for c in stations(game)]
+    ps = string("\t", replace(players(game), "\n" => "\n\t"))
     diseases = [
-        "$d: $(game.diseases[Int(d)]) ($(sum(game.cubes[:, Int(d)])))" for
+        "\t$d is $(game.diseases[Int(d)]), $(cubesinplay(game, d)) cubes" for
         d in instances(Disease)
     ]
 
-    return """players:
-    $(players(game))
-    diseases: $(join(diseases, ", "))
-    stations: $(join(stationlocs, ", "))
-    draw cards: $(length(game.drawpile))
-    outbreaks: $(game.outbreaks)
-    state: $state"""
+    return """Players:
+    $(ps)
+    Diseases:
+    $(join(diseases, "\n"))
+    Stations: $(join(stationlocs, ", "))
+    Draw cards left: $(length(game.drawpile))
+    Outbreaks: $(game.outbreaks)
+    State: $(Pandemic.checkstate(game))"""
 end
 
 end
