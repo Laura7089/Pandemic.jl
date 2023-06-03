@@ -133,6 +133,8 @@ See also [`newgame`](@ref), [`setupgame!`](@ref).
 end
 export Game
 
+Base.show(io::IO, game::Game) = write(io, Formatting.summary(game))
+
 """
     setupgame!(game)
 
