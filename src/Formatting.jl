@@ -71,7 +71,10 @@ function players(game::Game)::String
     end
     city(p) = game.world.cities[game.playerlocs[p]].id
 
-    join(("♟️ $p: $(city(p)), hand: $(counthand(game.hands[p]))" for p = 1:game.numplayers), "\n")
+    join(
+        ("♟️ $p: $(city(p)), hand: $(counthand(game.hands[p]))" for p = 1:game.numplayers),
+        "\n",
+    )
 end
 
 """
@@ -80,13 +83,16 @@ end
 Get a simple human-readable summary of the state of `game`.
 """
 function summary(game::Game)::String
-    cubes = ["$d: $(sum(game.cubes[:, Int(d)]))" for d in instances(Disease)]
     stationlocs = [getcity(game.world, c)[2].id for c in stations(game)]
     state = Pandemic.checkstate(game)
+    diseases = [
+        "$d: $(game.diseases[Int(d)]) ($(sum(game.cubes[:, Int(d)])))" for
+        d in instances(Disease)
+    ]
 
     return """players:
     $(players(game))
-    cubes: $(join(cubes, ", "))
+    diseases: $(join(diseases, ", "))
     stations: $(join(stationlocs, ", "))
     draw cards: $(length(game.drawpile))
     outbreaks: $(game.outbreaks)

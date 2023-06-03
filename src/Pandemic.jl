@@ -67,6 +67,15 @@ Can be `Spreading`, `Cured` or `Eradicated`.
     Cured
     Eradicated
 end
+function Base.show(io::IO, ds::DiseaseState)
+    if ds == Spreading
+        write(io, "Spreading")
+    elseif ds == Cured
+        write(io, "Cured")
+    elseif ds == Eradicated
+        write(io, "Eradicated")
+    end
+end
 
 """
     GameState
