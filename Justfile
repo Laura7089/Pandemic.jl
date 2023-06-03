@@ -13,3 +13,4 @@ format target=SRC_DIR:
 # Run unit tests
 test *args="":
     {{ JULIA }} --project -e "using Pkg; Pkg.test(allow_reresolve=false, {{ args }})"
+alias t := test
