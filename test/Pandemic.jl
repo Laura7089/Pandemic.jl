@@ -1,20 +1,5 @@
 using Pandemic
 
-world1 = begin
-    city1 = City("city1", Pandemic.Blue)
-    city2 = City("city2", Pandemic.Black)
-    city3 = City("city3", Pandemic.Blue)
-
-    b = Pandemic.WorldBuilder()
-    Pandemic.addcity!(b, city1)
-    Pandemic.addcity!(b, city2, ["city1"])
-    Pandemic.addcity!(b, city3, ["city1"])
-    b.start = 1
-    Pandemic.finaliseworld(b)
-end
-
-testgame() = Game(world = world1, settings = Pandemic.Settings(2, Introductory))
-
 @testset "cubesinplay" begin
     game = testgame()
     game.cubes = [0 3 0 0; 2 2 0 0]

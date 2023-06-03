@@ -17,7 +17,7 @@ Get a [`String`](@ref) representation of a city's cubes.
 `reprs` is a map from instances of [`Pandemic.Disease`](@ref) to strings representing each colour of cube; if not provided, uses [`Pandemic.CUBE_CHARS`](@ref).
 ```
 """
-function citycubes(game::Game, c; reprs = CUBE_CHARS)::String
+function citycubes(game::Game, c; reprs = Pandemic.CUBE_CHARS)::String
     join(reprs[d]^game.cubes[c, Int(d)] for d in instances(Disease))
 end
 
@@ -29,7 +29,7 @@ Get a [`String`](@ref) representation of the players in a city.
 `c` is the index of the city into `game.world.cities`.
 """
 function cityplayers(game::Game, c)::String
-    to_ret = join(filter(o -> game.playerlocs[o] == c, 1:game.numplayers), ",")
+    to_ret = join(filter(o -> game.playerlocs[o] == c, 1:game.settings.num_players), ",")
     isempty(to_ret) ? "" : "♟️ $to_ret"
 end
 
@@ -68,7 +68,13 @@ function players(game::Game)::String
     end
     city(p) = cityid(game.world, game.playerlocs[p])
 
-    join(("♟️ $p: $(city(p)), hand: $(ch(game.hands[p]))" for p = 1:game.numplayers), "\n")
+    join(
+        (
+            "♟️ $p: $(city(p)), hand: $(ch(game.hands[p]))" for
+            p = 1:game.settings.num_players
+        ),
+        "\n",
+    )
 end
 
 """

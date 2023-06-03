@@ -1,26 +1,11 @@
 using Pandemic
 using Pandemic.Actions
 
-city1 = City("city1", Pandemic.Blue)
-city2 = City("city2", Pandemic.Black)
-city3 = City("city3", Pandemic.Blue)
-
-world1 = begin
-    b = Pandemic.WorldBuilder()
-    b.start = 1
-    Pandemic.addcity!(b, city1)
-    Pandemic.addcity!(b, city2, [city1])
-    Pandemic.addcity!(b, city3, [city2])
-    Pandemic.finaliseworld(b)
-end
-
-testgame() = Game(world = deepcopy(world1), settings = Pandemic.Settings(2, Introductory))
-
 @testset "moving" begin
     game = testgame()
     move_one!(game, 1, city2)
     @test game.playerlocs[1] == 2
-    @test_throws "" move_one!(game, 2, city3)
+    @test_throws "" move_one!(game, 1, city3)
 
     game = testgame()
     push!(game.hands[1], 3)
