@@ -196,7 +196,7 @@ Create a new [`Game`](@ref) and set it up for the first turn.
 `settings` should be a [`Settings`](@ref) object.
 Effectively constructs a [`Game`](@ref) then calls [`Pandemic.setupgame!`](@ref) on it.
 """
-function newgame(world, settings, rng = MersenneTwister())::Game
+function newgame(world, settings::Settings, rng = MersenneTwister())::Game
     game = Game(world = world, settings = settings, rng = rng)
     setupgame!(game)
     return game
@@ -326,7 +326,8 @@ end
 Draw the appropriate amount of infection cards and call [`infectcity!`](@ref) with them.
 """
 function infectcities!(game::Game)
-    drawninfections = popmany!(game.infectiondeck, game.settings.infection_rates[game.infectionrateindex])
+    drawninfections =
+        popmany!(game.infectiondeck, game.settings.infection_rates[game.infectionrateindex])
     for city in drawninfections
         infectcity!(game, city)
     end
@@ -397,7 +398,8 @@ function checkstate(g::Game)::GameState
     # TODO: is this the right way to do this condition?
     # should it be called on it's own?
     if length(g.drawpile) < g.settings.player_draw
-        @debug "Game lost; draw deck too small" g.drawpile threshold = g.settings.player_draw
+        @debug "Game lost; draw deck too small" g.drawpile threshold =
+            g.settings.player_draw
         return Lost
     end
 

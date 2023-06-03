@@ -68,10 +68,7 @@ function players(game::Game)::String
     end
     city(p) = cityid(game.world, game.playerlocs[p])
 
-    join(
-        ("♟️ $p: $(city(p)), hand: $(ch(game.hands[p]))" for p = 1:game.numplayers),
-        "\n",
-    )
+    join(("♟️ $p: $(city(p)), hand: $(ch(game.hands[p]))" for p = 1:game.numplayers), "\n")
 end
 
 """
