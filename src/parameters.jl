@@ -17,6 +17,17 @@ const global CUBE_CHARS = Dict(
     Pandemic.Red => "🟥",
     Pandemic.Yellow => "🟨",
 )
+function Base.show(io::IO, dis::Disease)
+    if dis == Black
+        write(io, "Black")
+    elseif dis == Blue
+        write(io, "Blue")
+    elseif dis == Red
+        write(io, "Red")
+    elseif dis == Yellow
+        write(io, "Yellow")
+    end
+end
 
 """
     Difficulty

@@ -193,6 +193,16 @@ end
 export newgame
 
 """
+    stations(game)
+
+Get a [`Vector`](@ref) of research station locations in `game`.
+"""
+function stations(game)::Vector{Int}
+    [c for (c, s) in enumerate(game.stations) if s]
+end
+export stations
+
+"""
     drawcards!(game, player[, predicate])
 
 Draw [`PLAYER_DRAW`](@ref) cards and put them in `player`'s hand.
@@ -249,7 +259,7 @@ export drawcards!
 Perform an epidemic outbreak at `city`.
 
 1. Increase infection rate (`game.infectionrateindex`)
-2. If there are any cards in `city`, trigger an [`outbreak!`](@ref) there
+2. If there are any cubes in `city`, trigger an [`outbreak!`](@ref) there
 3. Set the cubes in `city` to [`MAX_CUBES_PER_CITY`](@ref)
 4. Put `city` on the infection discard pile
 5. Shuffle the infection discard pile and put it back on the draw pile
@@ -259,6 +269,7 @@ If `city` isn't passed, pop the bottom card from the infection draw pile and tri
 Pass the `rng` kwarg to override `game.rng`.
 """
 function epidemic!(game::Game; rng=nothing)
+    # TODO: what if the infection deck is empty?
     c = popat!(game.infectiondeck, 1) # "bottom" card
     epidemic!(game, c; rng=rng)
 end
