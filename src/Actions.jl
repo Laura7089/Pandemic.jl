@@ -219,7 +219,7 @@ function findcure!(g::Game, p, d::Disease)
         length(eligiblecards) >= g.settings.cards_to_cure,
         "Player $p does not have enough $d cards",
     )
-    _findcure!(g, p, d, eligiblecards[begin:5])
+    _findcure!(g, p, d, eligiblecards[begin:g.settings.cards_to_cure])
 end
 function findcure!(g::Game, p, d::Disease, cards)
     assert(length(cards) == g.settings.cards_to_cure)
