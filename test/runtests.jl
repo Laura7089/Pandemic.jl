@@ -16,6 +16,7 @@ WORLD1 = begin
 end
 
 testgame() = Game(world = WORLD1, settings = Pandemic.Settings(2, Introductory))
+testgamesetup(;world=WORLD1) = newgame(world, Pandemic.Settings(2, Introductory))
 
 include("./Pandemic.jl")
 include("./Actions.jl")

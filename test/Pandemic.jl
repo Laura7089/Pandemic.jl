@@ -37,7 +37,7 @@ end
     # TODO: *way* more different scenarios need testing for this
 end
 
-@testset "epidemic!" begin
+@testset "outbreak!" begin
     begin
         game = testgame()
         # Remove starting cubes from the board
@@ -54,4 +54,22 @@ end
         # City 1 should have been overflowed into and thus have one black cube
         @test game.cubes[c1, :] == [1, 0, 0, 0]
     end
+end
+
+@testset "epidemic!" begin
+    game = testgamesetup(world=Pandemic.Maps.vanillamap())
+    DISCARD_ADD = [100, 101, 102]
+    predeck = deepcopy(game.infectiondeck)
+    game.infectiondiscard = deepcopy(DISCARD_ADD)
+
+    # Make sure the target city has no cubes
+    willepidemic = game.infectiondeck[1]
+    disease = Pandemic.getcity(game.world, willepidemic)[2].colour
+    game.cubes[willepidemic, Int(disease)] = 0
+
+    Pandemic.epidemic!(game)
+
+    @test game.cubes[willepidemic, Int(disease)] == game.settings.max_cubes_per_city
+    @test game.infectionrateindex == 2
+    @test vcat(DISCARD_ADD, [willepidemic]) ⊆ game.infectiondeck
 end

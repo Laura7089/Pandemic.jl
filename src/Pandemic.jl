@@ -295,7 +295,7 @@ function epidemic!(game::Game, city; rng = game.rng)
     end
 
     # Step 3
-    game.cubes[c] = game.settings.max_cubes_per_city
+    game.cubes[c, Int(city.colour)] = game.settings.max_cubes_per_city
 
     # Step 4
     push!(game.infectiondiscard, c)
