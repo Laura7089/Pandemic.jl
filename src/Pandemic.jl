@@ -142,7 +142,7 @@ Pass `rng` as a kwarg to override `game.rng`.
 
 See also [`newgame`](@ref).
 """
-function setupgame!(game::Game; rng=nothing)::Game
+function setupgame!(game::Game; rng = nothing)::Game
     rng = isnothing(rng) ? game.rng : rng
 
     @debug "Dealing hands"
@@ -226,13 +226,13 @@ If called without `predicate`, the last cards in the hand will be discarded, ie.
 
 Pass the `rng` kwarg to override `game.rng`.
 """
-function drawcards!(game::Game, p, predicate; rng=nothing)
+function drawcards!(game::Game, p, predicate; rng = nothing)
     @debug "Drawing cards"
     drawn = collect(popmany!(game.drawpile, PLAYER_DRAW))
 
     # Resolve epidemics
     for _ in filter(x -> x == 0, drawn)
-        epidemic!(game; rng=rng)
+        epidemic!(game; rng = rng)
     end
 
     # Add cards to hand
@@ -257,8 +257,8 @@ function drawcards!(game::Game, p, predicate; rng=nothing)
         end
     end
 end
-function drawcards!(game::Game, p; rng=nothing)
-    drawcards!(game, p, g -> g.hands[g.playerturn][MAX_HAND+1:end]; rng=rng)
+function drawcards!(game::Game, p; rng = nothing)
+    drawcards!(game, p, g -> g.hands[g.playerturn][MAX_HAND+1:end]; rng = rng)
 end
 export drawcards!
 
@@ -277,12 +277,12 @@ If `city` isn't passed, pop the bottom card from the infection draw pile and tri
 
 Pass the `rng` kwarg to override `game.rng`.
 """
-function epidemic!(game::Game; rng=nothing)
+function epidemic!(game::Game; rng = nothing)
     # TODO: what if the infection deck is empty?
     c = popat!(game.infectiondeck, 1) # "bottom" card
-    epidemic!(game, c; rng=rng)
+    epidemic!(game, c; rng = rng)
 end
-function epidemic!(game::Game, city; rng=nothing)
+function epidemic!(game::Game, city; rng = nothing)
     # Step 1
     game.infectionrateindex += 1
 
@@ -368,7 +368,7 @@ function outbreak!(g::Game, city, ignore::Vector{Int})
             @debug "Ignoring city in outbreak chain" source = city neighbour
         else
             # TODO: push `c` to `ignore` here?
-            infectcity!(g, neighbour, colour=colour, outbreakignore=ignore)
+            infectcity!(g, neighbour, colour = colour, outbreakignore = ignore)
         end
     end
 end
@@ -453,11 +453,11 @@ Returns `true` if the "round" ticked over.
 
 Pass `rng` kwarg to override `game.rng`.
 """
-function endturn!(g::Game, discard=nothing; rng=nothing)::Bool
+function endturn!(g::Game, discard = nothing; rng = nothing)::Bool
     if isnothing(discard)
-        drawcards!(g, g.playerturn; rng=rng)
+        drawcards!(g, g.playerturn; rng = rng)
     else
-        drawcards!(g, g.playerturn, discard; rng=rng)
+        drawcards!(g, g.playerturn, discard; rng = rng)
     end
     infectcities!(g)
 

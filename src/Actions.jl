@@ -272,7 +272,7 @@ Decrements `game.actionsleft` and changes turn if necessary.
 Left half of return indicates if `game.playerturn` was incremented, right if `game.round` was incremented.
 Calls [`Pandemic.endturn!`](@ref) if the turn was ended.
 """
-function advanceaction!(g::Game, discard=nothing; rng=nothing)::Tuple{Bool, Bool}
+function advanceaction!(g::Game, discard = nothing; rng = nothing)::Tuple{Bool,Bool}
     # TODO: test me
     if g.actionsleft == 1
         roundtick = if isnothing(discard)
