@@ -224,7 +224,7 @@ function drawcards!(game::Game, p, predicate; rng=nothing)
     # Handle discards
     handsize = length(game.hands[game.playerturn])
     if handsize > MAX_HAND
-        numtodiscard = MAX_HAND - handsize
+        numtodiscard = handsize - MAX_HAND
         @debug "Hand too big, discarding cards" game.playerturn handsize MAX_HAND
 
         discard = Iterators.take(predicate(game), numtodiscard)
