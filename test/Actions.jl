@@ -14,13 +14,7 @@ world1 = begin
     Pandemic.finaliseworld(b)
 end
 
-testgame() = Game(
-    world = deepcopy(world1),
-    settings = Pandemic.Settings(
-        num_players = 2,
-        difficulty = Introductory,
-    ),
-)
+testgame() = Game(world = deepcopy(world1), settings = Pandemic.Settings(2, Introductory))
 
 @testset "moving" begin
     game = testgame()
@@ -129,7 +123,7 @@ end
     begin
         game = testgame()
         precubes = sum(game.cubes)
-        for _ in 1:game.settings.actions_per_turn
+        for _ = 1:game.settings.actions_per_turn
             advanceaction!(game)
         end
         @test game.playerturn == 2
@@ -137,11 +131,7 @@ end
     end
 end
 
-@testset "shareknowledge!" begin
-end
-@testset "treatdisease!" begin
-end
-@testset "advanceaction!" begin
-end
-@testset "endturn!" begin
-end
+@testset "shareknowledge!" begin end
+@testset "treatdisease!" begin end
+@testset "advanceaction!" begin end
+@testset "endturn!" begin end

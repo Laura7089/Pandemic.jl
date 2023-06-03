@@ -13,13 +13,7 @@ world1 = begin
     Pandemic.finaliseworld(b)
 end
 
-testgame() = Game(
-    world = world1,
-    settings = Pandemic.Settings(
-        num_players = 2,
-        difficulty = Introductory,
-    ),
-)
+testgame() = Game(world = world1, settings = Pandemic.Settings(2, Introductory))
 
 @testset "cubesinplay" begin
     game = testgame()

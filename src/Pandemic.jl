@@ -490,7 +490,7 @@ using PrecompileTools
 # Precompilation for speedup
 @compile_workload begin
     map = Pandemic.Maps.circle12()
-    set = Settings(difficulty = Pandemic.Introductory, num_players = 4)
+    set = Settings(4, Pandemic.Introductory)
     g = Pandemic.newgame(map, set)
     checkstate(g)
 end
