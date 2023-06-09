@@ -291,7 +291,7 @@ function epidemic!(game::Game, city; rng = game.rng)
 
     # Step 2
     if game.cubes[c, Int(city.colour)] != 0
-        outbreak!(game, c, [c])
+        outbreak!(game, c, Set([c]))
     end
 
     # Step 3
@@ -340,12 +340,13 @@ If `colour == nothing` then the default colour of `city` will be used.
 Trigger an outbreak iff `city` has `game.settings.max_cubes_per_city` cubes before infection.
 Pass `outbreakignore = [..]` to whitelist given cities from outbreaks resulting from this infection.
 """
-function infectcity!(g::Game, city; colour = nothing, outbreakignore = Int64[])
+function infectcity!(g::Game, city; colour = nothing, outbreakignore = Set{Int})
     c, city = getcity(g.world, city)
     colour = colour == nothing ? city.colour : colour
     @debug "Infecting city" city disease = colour
     if g.cubes[c, Int(colour)] == g.settings.max_cubes_per_city
-        outbreak!(g, c, vcat(outbreakignore, [c]))
+        push!(outbreakignore, c)
+        outbreak!(g, c, outbreakignore)
     else
         g.cubes[c, Int(colour)] += 1
     end
@@ -358,7 +359,7 @@ Trigger an outbreak around `city`.
 
 Ignore any cities in `ignore` in chain outbreaks.
 """
-function outbreak!(g::Game, city, ignore::Vector{Int})
+function outbreak!(g::Game, city, ignore::Set{Int})
     g.outbreaks += 1
     c, city = getcity(g.world, city)
     @debug "Outbreak" city
@@ -367,7 +368,7 @@ function outbreak!(g::Game, city, ignore::Vector{Int})
         if neighbour in ignore
             @debug "Ignoring city in outbreak chain" source = city neighbour
         else
-            # TODO: push `c` to `ignore` here?
+            push!(ignore, c)
             infectcity!(g, neighbour, colour = colour, outbreakignore = ignore)
         end
     end
