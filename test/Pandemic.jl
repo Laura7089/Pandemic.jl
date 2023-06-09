@@ -45,7 +45,7 @@ end
         c1 = cityindex(game.world, city1)
         c2 = cityindex(game.world, city2)
         c3 = cityindex(game.world, city3)
-        Pandemic.outbreak!(game, city2, Set{Int64}())
+        Pandemic.outbreak!(game, city2, Int64[])
 
         # City 2 is the place where the outbreak occurred, so no additional cubes are placed
         @test all(==(0), game.cubes[c2, :])
