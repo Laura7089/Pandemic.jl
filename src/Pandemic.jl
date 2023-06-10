@@ -36,6 +36,19 @@ If `c` is too small, this function will [`pop!`](@ref) as many elements as it ca
 popmany!(c, n) = (pop!(c) for _ = 1:min(n, length(c)))
 
 """
+    poprandom!(S)
+
+Pop a random element from collection `S` and return it.
+"""
+function poprandom!(S::Vector, rng)
+    if isempty(S)
+        throw(error("Empty vector passed to poprandom!"))
+    end
+    i = Random.rand(rng, 1:length(S))
+    return popat!(S, i)
+end
+
+"""
     Disease(lit)
 
 Creates a [`Disease`](@ref) from the string `lit`.
@@ -115,10 +128,12 @@ See also [`newgame`](@ref), [`setupgame!`](@ref).
 
     # Cards
     hands::Vector{Vector{Int}} = [[] for _ = 1:settings.num_players]
+
     infectiondeck::Vector{Int} = collect(1:length(world))
+    infectiondeckseen::Vector{Int} = Int[]
     infectiondiscard::Vector{Int} = Int[]
-    # NOTE: a 0 denotes an epidemic card
-    drawpile::Vector{Int} = Int[]
+    # a 0 denotes an epidemic card
+    drawpile::Vector{Vector{Int}} = Vector{Int}[]
     discardpile::Vector{Int} = Int[]
 
     # Global state
@@ -167,11 +182,10 @@ function setupgame!(game::Game; rng = game.rng)::Game
     numpiles = Int(game.settings.difficulty)
     subpilesize = round(length(playercards) / numpiles, RoundUp) |> Int
     for _ = 1:numpiles
-        pile = collect(popmany!(playercards, subpilesize))
-        push!(pile, 0)
-        # TODO: faster to insert at a given point instead?
-        shuffle!(rng, pile)
-        game.drawpile = vcat(game.drawpile, pile)
+        subpile = collect(popmany!(playercards, subpilesize))
+        push!(subpile, 0)
+        shuffle!(rng, subpile)
+        push!(game.drawpile, subpile)
     end
     assert(length(playercards) == 0) # Make sure we used up all the player cards
 
@@ -211,6 +225,27 @@ function stations(game)::Vector{Int}
 end
 export stations
 
+function drawcard!(game::Game, rng=game.rng)
+    if game.drawpile |> last |> isempty
+        pop!(game.drawpile)
+    end
+    return poprandom!(last(game.drawpile), rng)
+end
+
+"""
+    drawpilesize(game)
+
+Get the number of cards in the draw pile.
+"""
+function drawpilesize(game::Game)
+    if isempty(game.drawpile)
+        return 0
+    else
+        return sum(length, game.drawpile)
+    end
+end
+export drawpilesize
+
 """
     drawcards!(game, player[, predicate])
 
@@ -226,9 +261,16 @@ If called without `predicate`, the last cards in the hand will be discarded, ie.
 
 Pass the `rng` kwarg to override `game.rng`.
 """
-function drawcards!(game::Game, p, predicate; rng = nothing)
+function drawcards!(game::Game, p, predicate; rng = game.rng)
     @debug "Drawing cards"
-    drawn = collect(popmany!(game.drawpile, game.settings.player_draw))
+    drawn = []
+    for _ in game.settings.player_draw
+        try
+            push!(drawn, drawcard!(game, rng))
+        catch
+            @debug "No more cards to draw"
+        end
+    end
 
     # Resolve epidemics
     for _ in filter(x -> x == 0, drawn)
@@ -279,7 +321,7 @@ Pass the `rng` kwarg to override `game.rng`.
 """
 function epidemic!(game::Game; rng = game.rng)
     # TODO: what if the infection deck is empty?
-    c = popat!(game.infectiondeck, 1) # "bottom" card
+    c = poprandom!(game.infectiondeck, rng) # a random UNSEEN card
     epidemic!(game, c; rng = rng)
 end
 function epidemic!(game::Game, city; rng = game.rng)
@@ -301,8 +343,7 @@ function epidemic!(game::Game, city; rng = game.rng)
     push!(game.infectiondiscard, c)
 
     # Step 5
-    shuffle!(rng, game.infectiondiscard)
-    game.infectiondeck = vcat(game.infectiondeck, game.infectiondiscard)
+    game.infectiondeckseen = vcat(game.infectiondeckseen, game.infectiondiscard)
     game.infectiondiscard = []
 end
 
@@ -322,11 +363,15 @@ end
 
 Draw the appropriate amount of infection cards and call [`infectcity!`](@ref) with them.
 """
-function infectcities!(game::Game)
-    drawninfections =
-        popmany!(game.infectiondeck, game.settings.infection_rates[game.infectionrateindex])
-    for city in drawninfections
+function infectcities!(game::Game, rng=game.rng)
+    for _ in 1:game.settings.infection_rates[game.infectionrateindex]
+        city = if !isempty(game.infectiondeckseen)
+            poprandom!(game.infectiondeckseen, rng)
+        else
+            poprandom!(game.infectiondeck, rng)
+        end
         infectcity!(game, city)
+        push!(game.infectiondiscard, city)
     end
 end
 export infectcities!
@@ -394,7 +439,7 @@ function checkstate(g::Game)::GameState
     # Draw deck is too low
     # TODO: is this the right way to do this condition?
     # should it be called on it's own?
-    if length(g.drawpile) < g.settings.player_draw
+    if isempty(g.drawpile) || drawpilesize(g) < g.settings.player_draw
         @debug "Game lost; draw deck too small" g.drawpile threshold =
             g.settings.player_draw
         return Lost

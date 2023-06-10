@@ -20,7 +20,7 @@ end
 
     game = testgame()
     game.outbreaks = game.settings.max_outbreaks - 1
-    game.drawpile = collect(1:20)
+    game.drawpile = [collect(1:5), collect(6:10), collect(11:15), collect(16:20)]
     @test Pandemic.checkstate(game) == Pandemic.Playing
 
     game = testgame()
@@ -63,13 +63,13 @@ end
     game.infectiondiscard = deepcopy(DISCARD_ADD)
 
     # Make sure the target city has no cubes
-    willepidemic = game.infectiondeck[1]
+    willepidemic = popat!(game.infectiondeck, 1)
     disease = Pandemic.getcity(game.world, willepidemic)[2].colour
     game.cubes[willepidemic, Int(disease)] = 0
 
-    Pandemic.epidemic!(game)
+    Pandemic.epidemic!(game, willepidemic)
 
     @test game.cubes[willepidemic, Int(disease)] == game.settings.max_cubes_per_city
     @test game.infectionrateindex == 2
-    @test vcat(DISCARD_ADD, [willepidemic]) ⊆ game.infectiondeck
+    @test vcat(DISCARD_ADD, [willepidemic]) ⊆ game.infectiondeckseen
 end
