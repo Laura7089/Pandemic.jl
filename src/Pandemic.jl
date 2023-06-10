@@ -320,8 +320,13 @@ If `city` isn't passed, pop the bottom card from the infection draw pile and tri
 Pass the `rng` kwarg to override `game.rng`.
 """
 function epidemic!(game::Game; rng = game.rng)
-    # TODO: what if the infection deck is empty?
-    c = poprandom!(game.infectiondeck, rng) # a random UNSEEN card
+    c = if !isempty(game.infectiondeck)
+        poprandom!(game.infectiondeck, rng) # a random UNSEEN card
+    elseif !isempty(game.infectiondeckseen)
+        poprandom!(game.infectiondeckseen, rng)
+    else
+        throw(error("No infection cards available when epidemic drawn"))
+    end
     epidemic!(game, c; rng = rng)
 end
 function epidemic!(game::Game, city; rng = game.rng)
