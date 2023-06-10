@@ -407,13 +407,12 @@ function outbreak!(g::Game, city, ignore::Vector{Int})
     g.outbreaks += 1
     c, city = getcity(g.world, city)
     @debug "Outbreak" city
-    colour = city.colour
     for neighbour in Graphs.neighbors(g.world.graph, c)
         if neighbour in ignore
             @debug "Ignoring city in outbreak chain" source = city neighbour
         else
             push!(ignore, c)
-            infectcity!(g, neighbour, colour = colour, outbreakignore = ignore)
+            infectcity!(g, neighbour, colour = city.colour, outbreakignore = ignore)
         end
     end
 end

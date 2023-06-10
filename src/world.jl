@@ -6,7 +6,7 @@ using Graphs
 A city in the game world.
 
 `id` cannot be of type `Int`.
-If `id <: AbstractString`, then it is **case-insensitive**.
+If `id <: AbstractString`, then it is **case-sensitive**.
 `City`s are considered to be equal iff their `id` fields are equal.
 """
 struct City
@@ -40,9 +40,6 @@ Returns `nothing` if the city isn't found.
 """
 function cityindexunchecked(world, id)
     findfirst(c -> c.id == id, world.cities)
-end
-function cityindexunchecked(world, id::AbstractString)
-    findfirst(c -> lowercase(c.id) == lowercase(id), world.cities)
 end
 # Convenience method:"Los Angeles", ["San Francisco", "Chicago", "Mexico City", "Sydney"]),
 # integers are not valid ids so we assume c is the index and return it
