@@ -395,7 +395,8 @@ function infectcity!(g::Game, city; colour = nothing, outbreakignore = Int64[])
     colour = colour == nothing ? city.colour : colour
     @debug "Infecting city" city disease = colour
     if g.cubes[c, Int(colour)] == g.settings.max_cubes_per_city
-        outbreak!(g, c, vcat(outbreakignore, [c]))
+        push!(outbreakignore, c)
+        outbreak!(g, c, outbreakignore)
     else
         g.cubes[c, Int(colour)] += 1
     end
