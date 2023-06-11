@@ -95,8 +95,9 @@ function summary(game::Game)::String
     Diseases:
     $(join(diseases, "\n"))
     Stations: $(join(stationlocs, ", "))
-    Draw cards left: $(drawpilesize(game)))
+    Draw cards left: $(drawpilesize(game))
     Outbreaks: $(game.outbreaks)
+    Rounds passed: $(game.round)
     State: $(Pandemic.checkstate(game))"""
 end
 
