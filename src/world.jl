@@ -55,9 +55,11 @@ Throws an error if the city isn't found.
 Pass the parameter `error` to override the error text.
 `id` may either be a [`City`](@ref) object or just some identifying object.
 """
-function cityindex(world, c, e = "City $c not found")
+function cityindex(world, c)
     i = cityindexunchecked(world, c)
-    @assert i != nothing e
+    if isnothing(i)
+        throw(ArgumentError(LazyString("City index", c, "not found")))
+    end
     return i
 end
 export cityindex
